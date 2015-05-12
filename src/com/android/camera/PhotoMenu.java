@@ -746,6 +746,7 @@ public class PhotoMenu extends MenuController
         }
 
         CharSequence[] entries = pref.getEntries();
+        CharSequence[] entryValues = pref.getEntryValues();
 
         int[] thumbnails = pref.getThumbnailIds();
 
@@ -820,6 +821,11 @@ public class PhotoMenu extends MenuController
             imageView.setImageResource(thumbnails[i]);
             label.setText(entries[i]);
             layout.addView(layout2);
+
+            // ASD only available when developer options are enabled.
+            if(entryValues[i].equals("asd")) {
+                layout2.setVisibility(mActivity.isDeveloperMenuEnabled()?View.VISIBLE:View.GONE);
+            }
         }
         mPreviewMenu = basic;
     }
