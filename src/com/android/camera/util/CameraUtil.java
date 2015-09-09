@@ -151,7 +151,8 @@ public class CameraUtil {
     }
 
     public static boolean isVideoSnapshotSupported(Parameters params) {
-        return TRUE.equals(params.get(VIDEO_SNAPSHOT_SUPPORTED));
+        //return TRUE.equals(params.get(VIDEO_SNAPSHOT_SUPPORTED));
+        return false;
     }
 
     public static boolean isCameraHdrSupported(Parameters params) {
