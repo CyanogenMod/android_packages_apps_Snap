@@ -112,6 +112,9 @@ public class ModuleSwitcher extends RotateImageView
         // Always decrement one because of GCam.
         --numDrawIds;
 
+        // Always decrement one because of pano.
+        --numDrawIds;
+
         int[] drawids = new int[numDrawIds];
         int[] moduleids = new int[numDrawIds];
         int ix = 0;
@@ -120,6 +123,9 @@ public class ModuleSwitcher extends RotateImageView
                 continue; // not enabled, so don't add to UI
             }
             if (i == GCAM_MODULE_INDEX) {
+                continue; // don't add to UI
+            }
+            if (i == WIDE_ANGLE_PANO_MODULE_INDEX) {
                 continue; // don't add to UI
             }
             moduleids[ix] = i;
