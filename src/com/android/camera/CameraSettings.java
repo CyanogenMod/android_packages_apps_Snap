@@ -313,6 +313,11 @@ public class CameraSettings {
     }
 
     public static int getHighSpeedQualityFor(int quality) {
+        // High-speed 1440p is unsupported, so just choose
+        // another unsupported resolution to avoid crashing
+        if (quality == CamcorderProfile.QUALITY_1440P) {
+            quality = CamcorderProfile.QUALITY_2160P;
+        }
         return VIDEO_QUALITY_TO_HIGHSPEED.get(quality);
     }
 
