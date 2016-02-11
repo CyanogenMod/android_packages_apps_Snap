@@ -933,8 +933,7 @@ public class VideoModule implements CameraModule,
     }
 
     private boolean is4KEnabled() {
-       if (mProfile.quality == CamcorderProfile.QUALITY_2160P ||
-           mProfile.quality == CamcorderProfile.QUALITY_4KDCI) {
+       if (mProfile.quality == CamcorderProfile.QUALITY_2160P) {
            return true;
        } else {
            return false;
