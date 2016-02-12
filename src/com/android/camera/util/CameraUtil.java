@@ -1189,5 +1189,4 @@ public class CameraUtil {
         }
         return retRatio;
     }
-
 }
