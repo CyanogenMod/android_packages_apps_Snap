@@ -42,6 +42,7 @@ public class ListMenu extends ListView
         AdapterView.OnItemClickListener {
     @SuppressWarnings("unused")
     private static final String TAG = "ListMenu";
+    private int mHighlighted = -1;
     private Listener mListener;
     private ArrayList<ListPreference> mListItem = new ArrayList<ListPreference>();
 
@@ -93,6 +94,9 @@ public class ListMenu extends ListView
                 Log.w(TAG, "Invalid input: enabled list length, " + mEnabled.length
                         + " position " + position);
             }
+            if (position == mHighlighted) {
+                view.setActivated(true);
+            }
             return view;
         }
 
@@ -124,7 +128,6 @@ public class ListMenu extends ListView
         ArrayAdapter<ListPreference> mListItemAdapter = new MoreSettingAdapter();
         setAdapter(mListItemAdapter);
         setOnItemClickListener(this);
-        setSelector(android.R.color.transparent);
         // Initialize mEnabled
         mEnabled = new boolean[mListItem.size()];
         for (int i = 0; i < mEnabled.length; i++) {
@@ -184,10 +187,9 @@ public class ListMenu extends ListView
     public void resetHighlight() {
         int count = getChildCount();
         for (int i = 0; i < count; i++) {
-            View v = getChildAt(i);
-            v.setBackground(null);
+            getChildAt(i).setActivated(false);
         }
-
+        mHighlighted = -1;
     }
 
     @Override
@@ -205,7 +207,8 @@ public class ListMenu extends ListView
         if (mListener != null) {
             resetHighlight();
             ListPreference pref = mListItem.get(position);
-            view.setBackgroundColor(getContext().getResources().getColor(R.color.setting_color));
+            mHighlighted = position;
+            view.setActivated(true);
             mListener.onPreferenceClicked(pref, (int) view.getY());
         }
 

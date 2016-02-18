@@ -38,7 +38,6 @@ import android.widget.LinearLayout;
 import android.widget.FrameLayout;
 import android.widget.FrameLayout.LayoutParams;
 
-import com.android.camera.ui.CameraControls;
 import com.android.camera.ui.ListSubMenu;
 import com.android.camera.ui.ListMenu;
 import com.android.camera.ui.TimeIntervalPopup;
@@ -137,7 +136,7 @@ public class VideoMenu extends MenuController
                 CameraSettings.KEY_VIDEO_ENCODER,
                 CameraSettings.KEY_AUDIO_ENCODER,
                 CameraSettings.KEY_VIDEO_HDR,
-                CameraSettings.KEY_POWER_MODE,
+                CameraSettings.KEY_ANTIBANDING,
                 CameraSettings.KEY_VIDEO_ROTATION,
                 CameraSettings.KEY_VIDEO_CDS_MODE,
                 CameraSettings.KEY_VIDEO_TNR_MODE
@@ -308,7 +307,7 @@ public class VideoMenu extends MenuController
 
     public void animateFadeIn(final ListView v) {
         ViewPropertyAnimator vp = v.animate();
-        vp.alpha(0.85f).setDuration(ANIMATION_DURATION);
+        vp.alpha(1f).setDuration(ANIMATION_DURATION);
         vp.start();
     }
 
@@ -616,10 +615,8 @@ public class VideoMenu extends MenuController
                         if (System.currentTimeMillis() - startTime < CLICK_THRESHOLD) {
                             pref.setValueIndex(j);
                             for (View v1 : views) {
-                                v1.setBackground(null);
+                                v1.setActivated(v1 == v);
                             }
-                            ImageView image = (ImageView) v.findViewById(R.id.image);
-                            image.setBackgroundColor(0xff33b5e5);
                             onSettingChanged(pref);
                         }
 
@@ -628,9 +625,8 @@ public class VideoMenu extends MenuController
                 }
             });
 
-            views[j] = imageView;
-            if (i == init)
-                imageView.setBackgroundColor(0xff33b5e5);
+            views[j] = layout2;
+            layout2.setActivated(i == init);
             TextView label = (TextView) layout2.findViewById(R.id.label);
             imageView.setImageResource(thumbnails[i]);
             label.setText(entries[i]);
@@ -641,7 +637,7 @@ public class VideoMenu extends MenuController
     }
 
     public void openFirstLevel() {
-        if (isMenuBeingShown() || CameraControls.isAnimating())
+        if (isMenuBeingShown() || mUI.isCameraControlsAnimating())
             return;
         if (mListMenu == null || mPopupStatus != POPUP_FIRST_LEVEL) {
             initializePopup();

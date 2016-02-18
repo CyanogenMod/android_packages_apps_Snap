@@ -232,6 +232,7 @@ public class FaceView extends View
                 mPaint.setColor(mColor);
                 mRect.offset(dx, dy);
                 canvas.drawOval(mRect, mPaint);
+
                 if (mFaces[i] instanceof ExtendedFace) {
                     ExtendedFace face = (ExtendedFace)mFaces[i];
                     float[] point = new float[4];

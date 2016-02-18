@@ -17,14 +17,17 @@
 package com.android.camera;
 
 import static com.android.camera.util.CameraUtil.Assert;
+import com.android.camera.app.CameraApp;
 
 import java.io.IOException;
 
 import android.annotation.TargetApi;
+import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.hardware.Camera.AutoFocusCallback;
 import android.hardware.Camera.AutoFocusMoveCallback;
+import android.hardware.Camera.CameraInfo;
 import android.hardware.Camera.ErrorCallback;
 import android.hardware.Camera.FaceDetectionListener;
 import android.hardware.Camera.OnZoomChangeListener;
@@ -43,6 +46,9 @@ import android.hardware.Camera.CameraDataCallback;
 import android.hardware.Camera.CameraMetaDataCallback;
 import com.android.camera.util.ApiHelper;
 import android.os.ConditionVariable;
+import android.os.SystemProperties;
+
+import org.codeaurora.snapcam.R;
 
 /**
  * A class to implement {@link CameraManager} of the Android camera framework.
@@ -73,6 +79,7 @@ class AndroidCameraManagerImpl implements CameraManager {
     private static final int ADD_CALLBACK_BUFFER =              105;
     private static final int SET_PREVIEW_DISPLAY_ASYNC =        106;
     private static final int SET_PREVIEW_CALLBACK =             107;
+    private static final int SET_ONESHOT_PREVIEW_CALLBACK =     108;
     // Parameters
     private static final int SET_PARAMETERS =     201;
     private static final int GET_PARAMETERS =     202;
@@ -99,6 +106,7 @@ class AndroidCameraManagerImpl implements CameraManager {
     private static final int SET_AUTO_HDR_MODE = 801;
     private CameraHandler mCameraHandler;
     private android.hardware.Camera mCamera;
+    private static final String PERSIST_DIRECT_CALLBACK = "persist.camera.direct.cb";
 
     // Used to retain a copy of Parameters for setting parameters.
     private Parameters mParamsToSet;
@@ -202,13 +210,26 @@ class AndroidCameraManagerImpl implements CameraManager {
             try {
                 switch (msg.what) {
                     case OPEN_CAMERA:
+                        int cameraId = msg.arg1;
                         try {
-                            mCamera = android.hardware.Camera.openLegacy(msg.arg1,
-                                    android.hardware.Camera.CAMERA_HAL_API_VERSION_1_0);
+                            Context context = CameraApp.getContext();
+
+                            boolean backCameraOpenLegacy = context.getResources().getBoolean(R.bool.back_camera_open_legacy);
+                            boolean frontCameraOpenLegacy = context.getResources().getBoolean(R.bool.front_camera_open_legacy);
+
+                            CameraInfo info = CameraHolder.instance().getCameraInfo()[cameraId];
+
+                            if ((info.facing == CameraInfo.CAMERA_FACING_BACK && backCameraOpenLegacy) || 
+                                (info.facing == CameraInfo.CAMERA_FACING_FRONT && frontCameraOpenLegacy)) {
+                                mCamera = android.hardware.Camera.openLegacy(cameraId,
+                                        android.hardware.Camera.CAMERA_HAL_API_VERSION_1_0);
+                            } else {
+                                mCamera = android.hardware.Camera.open(cameraId);
+                            }
                         } catch (RuntimeException e) {
                             /* Retry with open if openLegacy fails */
                             Log.v(TAG, "openLegacy failed. Using open instead");
-                            mCamera = android.hardware.Camera.open(msg.arg1);
+                            mCamera = android.hardware.Camera.open(cameraId);
                         }
                         if (mCamera != null) {
                             mParametersIsDirty = true;
@@ -219,7 +240,7 @@ class AndroidCameraManagerImpl implements CameraManager {
                             }
                         } else {
                             if (msg.obj != null) {
-                                ((CameraOpenErrorCallback) msg.obj).onDeviceOpenFailure(msg.arg1);
+                                ((CameraOpenErrorCallback) msg.obj).onDeviceOpenFailure(cameraId);
                             }
                         }
                         return;
@@ -331,6 +352,9 @@ class AndroidCameraManagerImpl implements CameraManager {
                     case SET_PREVIEW_CALLBACK:
                         mCamera.setPreviewCallback((PreviewCallback) msg.obj);
                         return;
+
+                    case SET_ONESHOT_PREVIEW_CALLBACK:
+                        mCamera.setOneShotPreviewCallback((PreviewCallback) msg.obj);
 
                     case ENABLE_SHUTTER_SOUND:
                         enableShutterSound((msg.arg1 == 1) ? true : false);
@@ -490,6 +514,13 @@ class AndroidCameraManagerImpl implements CameraManager {
                 Handler handler, CameraPreviewDataCallback cb) {
             mCameraHandler.obtainMessage(
                     SET_PREVIEW_CALLBACK_WITH_BUFFER,
+                    PreviewCallbackForward.getNewInstance(handler, this, cb)).sendToTarget();
+        }
+
+        @Override
+        public void setOneShotPreviewCallback(Handler handler, CameraPreviewDataCallback cb) {
+            mCameraHandler.obtainMessage(
+                    SET_ONESHOT_PREVIEW_CALLBACK,
                     PreviewCallbackForward.getNewInstance(handler, this, cb)).sendToTarget();
         }
 
@@ -715,6 +746,7 @@ class AndroidCameraManagerImpl implements CameraManager {
         private final Handler mHandler;
         private final CameraShutterCallback mCallback;
         private final CameraProxy mCamera;
+        private final boolean mDirectCallback;
 
         /**
          * Returns a new instance of {@link ShutterCallbackForward}.
@@ -736,20 +768,26 @@ class AndroidCameraManagerImpl implements CameraManager {
             mHandler = h;
             mCamera = camera;
             mCallback = cb;
+            mDirectCallback = SystemProperties.getBoolean(
+                    PERSIST_DIRECT_CALLBACK, false);
         }
 
         @Override
         public void onShutter() {
             final android.hardware.Camera currentCamera = mCamera.getCamera();
 
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    if (currentCamera.equals(mCamera.getCamera())) {
-                        mCallback.onShutter(mCamera);
+            if (mDirectCallback) {
+                mCallback.onShutter(mCamera);
+            } else {
+                mHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (currentCamera.equals(mCamera.getCamera())) {
+                            mCallback.onShutter(mCamera);
+                        }
                     }
-                }
-            });
+                });
+            }
         }
     }
 

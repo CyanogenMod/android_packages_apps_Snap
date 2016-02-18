@@ -100,6 +100,7 @@ import com.android.camera.data.MediaDetails;
 import com.android.camera.data.SimpleViewData;
 import com.android.camera.exif.ExifInterface;
 import com.android.camera.tinyplanet.TinyPlanetFragment;
+import com.android.camera.ui.CameraRootView;
 import com.android.camera.ui.ModuleSwitcher;
 import com.android.camera.ui.DetailsDialog;
 import com.android.camera.ui.FilmStripView;
@@ -117,8 +118,7 @@ import java.io.File;
 import java.io.IOException;
 
 import static com.android.camera.CameraManager.CameraOpenErrorCallback;
-
-import android.media.AudioManager;
+import com.android.camera.SDCard;
 
 public class CameraActivity extends Activity
         implements ModuleSwitcher.ModuleSwitchListener,
@@ -190,7 +190,7 @@ public class CameraActivity extends Activity
     private int mCurrentModuleIndex;
     private CameraModule mCurrentModule;
     private FrameLayout mAboveFilmstripControlLayout;
-    private View mCameraModuleRootView;
+    private CameraRootView mCameraModuleRootView;
     private FilmStripView mFilmStripView;
     private ProgressBar mBottomProgress;
     private View mPanoStitchingPanel;
@@ -217,6 +217,7 @@ public class CameraActivity extends Activity
     private ViewGroup mUndoDeletionBar;
     private boolean mIsUndoingDeletion = false;
     private boolean mIsEditActivityInProgress = false;
+    private boolean mPaused = true;
     private View mPreviewCover;
     private FrameLayout mPreviewContentLayout;
 
@@ -245,10 +246,8 @@ public class CameraActivity extends Activity
     // Keep track of data request here to avoid creating useless UpdateThumbnailTask.
     private boolean mDataRequested;
 
-    private AudioManager mAudioManager;
-    private int mShutterVol;
-    private int mOriginalMasterVol;
     private WakeLock mWakeLock;
+    private Context mContext;
 
     private class MyOrientationEventListener
             extends OrientationEventListener {
@@ -600,14 +599,22 @@ public class CameraActivity extends Activity
             intent.putExtra(KEY_TOTAL_NUMBER, (adapter.getTotalNumber() -1));
             startActivity(intent);
         } catch (ActivityNotFoundException ex) {
-            try {
-                Log.w(TAG, "Gallery not found");
-                Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                startActivity(intent);
-                intent.putExtra(KEY_FROM_SNAPCAM, true);
-            } catch (ActivityNotFoundException e) {
-                Log.w(TAG, "No Activity could be found to open image or video");
-            }
+            gotoViewPhoto(uri);
+        } catch (IllegalArgumentException ex) {
+            gotoViewPhoto(uri);
+        }
+    }
+
+    private void gotoViewPhoto(Uri uri) {
+        try {
+            Log.w(TAG, "Gallery not found");
+            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+            startActivity(intent);
+            intent.putExtra(KEY_FROM_SNAPCAM, true);
+        } catch (ActivityNotFoundException e) {
+            Log.w(TAG, "No Activity could be found to open image or video");
+        } catch (IllegalArgumentException e) {
+            Log.w(TAG, "No Activity could be found to open image or video");
         }
     }
 
@@ -634,7 +641,6 @@ public class CameraActivity extends Activity
                 | (visible ? View.SYSTEM_UI_FLAG_VISIBLE :
                     View.SYSTEM_UI_FLAG_LOW_PROFILE
                         | View.SYSTEM_UI_FLAG_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                         | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
         if (newSystemUIVisibility != currentSystemUIVisibility) {
             decorView.setSystemUiVisibility(newSystemUIVisibility);
@@ -819,8 +825,6 @@ public class CameraActivity extends Activity
             int w = opt.outWidth;
             int h = opt.outHeight;
             int d = w > h ? h : w;
-            final Rect rect = w > h ? new Rect((w - h) / 2, 0, (w + h) / 2, h)
-                    : new Rect(0, (h - w) / 2, w, (h + w) / 2);
 
             final int target = getResources().getDimensionPixelSize(R.dimen.capture_size);
             int sample = 1;
@@ -829,6 +833,8 @@ public class CameraActivity extends Activity
                     sample *= 2;
                 }
             }
+            int st = sample * target;
+            final Rect rect = new Rect((w - st) / 2, (h - st) / 2, (w + st) / 2, (h + st) / 2);
 
             opt.inJustDecodeBounds = false;
             opt.inSampleSize = sample;
@@ -868,6 +874,8 @@ public class CameraActivity extends Activity
             } else if (w < h) {
                 mLength = w;
                 bitmap = Bitmap.createBitmap(bitmap, 0, (h - w) / 2, w, w);
+            } else {
+                mLength = w;
             }
 
             mBitmapShader = new BitmapShader(bitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
@@ -1338,7 +1346,7 @@ public class CameraActivity extends Activity
 
                     @Override
                     protected void onPostExecute(MediaDetails mediaDetails) {
-                        if (mediaDetails != null) {
+                        if ((mediaDetails != null) && !mPaused) {
                             DetailsDialog.create(CameraActivity.this, mediaDetails).show();
                         }
                     }
@@ -1407,57 +1415,14 @@ public class CameraActivity extends Activity
         }
         GcamHelper.init(getContentResolver());
 
-        mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-        mOriginalMasterVol = mAudioManager.getMasterVolume();
-        mShutterVol =  SystemProperties.getInt("persist.camera.snapshot.volume", -1);
-        if (mShutterVol >= 0 && mShutterVol <= 100 )
-            mAudioManager.setMasterVolume(mShutterVol,0);
+        mContext = getApplicationContext();
+        SDCard.initialize(mContext);
 
         getWindow().requestFeature(Window.FEATURE_ACTION_BAR);
-        setContentView(R.layout.camera_filmstrip);
 
-        mActionBar = getActionBar();
-        mActionBar.addOnMenuVisibilityListener(this);
-
-        if (ApiHelper.HAS_ROTATION_ANIMATION) {
-            setRotationAnimation();
-        }
-
-        mMainHandler = new MainHandler(getMainLooper());
-
-        mAboveFilmstripControlLayout =
-                (FrameLayout) findViewById(R.id.camera_above_filmstrip_layout);
-        mAboveFilmstripControlLayout.setFitsSystemWindows(true);
-        // Hide action bar first since we are in full screen mode first, and
-        // switch the system UI to lights-out mode.
-        this.setSystemBarsVisibility(false);
-        mPanoramaManager = AppManagerFactory.getInstance(this)
-                .getPanoramaStitchingManager();
-        mPlaceholderManager = AppManagerFactory.getInstance(this)
-                .getGcamProcessingManager();
-        mPanoramaManager.addTaskListener(mStitchingListener);
-        mPlaceholderManager.addTaskListener(mPlaceholderListener);
         LayoutInflater inflater = getLayoutInflater();
         View rootLayout = inflater.inflate(R.layout.camera, null, false);
-        mCameraModuleRootView = rootLayout.findViewById(R.id.camera_app_root);
-        mPanoStitchingPanel = findViewById(R.id.pano_stitching_progress_panel);
-        mBottomProgress = (ProgressBar) findViewById(R.id.pano_stitching_progress_bar);
-        mCameraPreviewData = new CameraPreviewData(rootLayout,
-                FilmStripView.ImageData.SIZE_FULL,
-                FilmStripView.ImageData.SIZE_FULL);
-        // Put a CameraPreviewData at the first position.
-        mWrappedDataAdapter = new FixedFirstDataAdapter(
-                new CameraDataAdapter(new ColorDrawable(
-                        getResources().getColor(R.color.photo_placeholder))),
-                mCameraPreviewData);
-        mFilmStripView = (FilmStripView) findViewById(R.id.filmstrip_view);
-        mFilmStripView.setViewGap(
-                getResources().getDimensionPixelSize(R.dimen.camera_film_strip_gap));
-        mPanoramaViewHelper = new PanoramaViewHelper(this);
-        mPanoramaViewHelper.onCreate();
-        mFilmStripView.setPanoramaViewHelper(mPanoramaViewHelper);
-        // Set up the camera preview first so the preview shows up ASAP.
-        mFilmStripView.setListener(mFilmStripListener);
+        mCameraModuleRootView = (CameraRootView) rootLayout.findViewById(R.id.camera_app_root);
 
         int moduleIndex = -1;
         if (MediaStore.INTENT_ACTION_VIDEO_CAMERA.equals(getIntent().getAction())
@@ -1486,9 +1451,55 @@ public class CameraActivity extends Activity
             }
         }
 
+        setContentView(R.layout.camera_filmstrip);
+
+        mAboveFilmstripControlLayout =
+                (FrameLayout) findViewById(R.id.camera_above_filmstrip_layout);
+        mAboveFilmstripControlLayout.setFitsSystemWindows(true);
+
+        mFilmStripView = (FilmStripView) findViewById(R.id.filmstrip_view);
+        mFilmStripView.setViewGap(
+                getResources().getDimensionPixelSize(R.dimen.camera_film_strip_gap));
+
         mOrientationListener = new MyOrientationEventListener(this);
         setModuleFromIndex(moduleIndex);
         mCurrentModule.init(this, mCameraModuleRootView);
+
+        mActionBar = getActionBar();
+        mActionBar.addOnMenuVisibilityListener(this);
+
+        if (ApiHelper.HAS_ROTATION_ANIMATION) {
+            setRotationAnimation();
+        }
+
+        mMainHandler = new MainHandler(getMainLooper());
+
+        // Hide action bar first since we are in full screen mode first, and
+        // switch the system UI to lights-out mode.
+        this.setSystemBarsVisibility(false);
+        mPanoramaManager = AppManagerFactory.getInstance(this)
+                .getPanoramaStitchingManager();
+        mPlaceholderManager = AppManagerFactory.getInstance(this)
+                .getGcamProcessingManager();
+        mPanoramaManager.addTaskListener(mStitchingListener);
+        mPlaceholderManager.addTaskListener(mPlaceholderListener);
+        mPanoStitchingPanel = findViewById(R.id.pano_stitching_progress_panel);
+        mBottomProgress = (ProgressBar) findViewById(R.id.pano_stitching_progress_bar);
+        mCameraPreviewData = new CameraPreviewData(rootLayout,
+                FilmStripView.ImageData.SIZE_FULL,
+                FilmStripView.ImageData.SIZE_FULL);
+
+        // Put a CameraPreviewData at the first position.
+        mWrappedDataAdapter = new FixedFirstDataAdapter(
+                new CameraDataAdapter(new ColorDrawable(
+                        getResources().getColor(R.color.photo_placeholder))),
+                mCameraPreviewData);
+        mPanoramaViewHelper = new PanoramaViewHelper(this);
+        mPanoramaViewHelper.onCreate();
+        mFilmStripView.setPanoramaViewHelper(mPanoramaViewHelper);
+
+        // Set up the camera preview first so the preview shows up ASAP.
+        mFilmStripView.setListener(mFilmStripListener);
 
         if (!mSecureCamera) {
             mDataAdapter = mWrappedDataAdapter;
@@ -1593,8 +1604,6 @@ public class CameraActivity extends Activity
 
     @Override
     public void onPause() {
-        if (mShutterVol >= 0 && mShutterVol <= 100)
-            mAudioManager.setMasterVolume(mOriginalMasterVol,0);
         // Delete photos that are pending deletion
         performDeletion();
         mOrientationListener.disable();
@@ -1602,6 +1611,7 @@ public class CameraActivity extends Activity
         super.onPause();
         mCurrentModule.onPauseAfterSuper();
 
+        mPaused = true;
         mLocalImagesObserver.setActivityPaused(true);
         mLocalVideosObserver.setActivityPaused(true);
     }
@@ -1618,15 +1628,13 @@ public class CameraActivity extends Activity
 
     @Override
     public void onResume() {
-        if (mShutterVol >= 0 && mShutterVol <= 100)
-            mAudioManager.setMasterVolume(mShutterVol,0);
-
         UsageStatistics.onEvent(UsageStatistics.COMPONENT_CAMERA,
                 UsageStatistics.ACTION_FOREGROUNDED, this.getClass().getSimpleName());
 
         mOrientationListener.enable();
         mCurrentModule.onResumeBeforeSuper();
         super.onResume();
+        mPaused = false;
         mCurrentModule.onResumeAfterSuper();
 
         setSwipingEnabled(true);
@@ -1681,8 +1689,6 @@ public class CameraActivity extends Activity
             mWakeLock.release();
             Log.d(TAG, "wake lock release");
         }
-        if (mShutterVol >= 0 && mShutterVol <= 100)
-            mAudioManager.setMasterVolume(mOriginalMasterVol,0);
         if (mSecureCamera) {
             unregisterReceiver(mScreenOffReceiver);
         }
@@ -1734,7 +1740,9 @@ public class CameraActivity extends Activity
     }
 
     public void setPreviewGestures(PreviewGestures previewGestures) {
-        mFilmStripView.setPreviewGestures(previewGestures);
+        if(mFilmStripView != null) {
+            mFilmStripView.setPreviewGestures(previewGestures);
+        }
     }
 
     protected void updateStorageSpace() {
@@ -1932,6 +1940,10 @@ public class CameraActivity extends Activity
 
     private void openModule(CameraModule module) {
         module.init(this, mCameraModuleRootView);
+        // Re-apply the last fitSystemWindows() run. Our views rely on this, but
+        // the framework's ActionBarOverlayLayout effectively prevents this if the
+        // actual insets haven't changed.
+        mCameraModuleRootView.redoFitSystemWindows();
         module.onResumeBeforeSuper();
         module.onResumeAfterSuper();
     }

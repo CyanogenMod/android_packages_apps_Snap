@@ -29,6 +29,10 @@
 #include "Log.h"
 #define LOG_TAG "BLEND"
 
+const float Blend::LIMIT_SIZE_MULTIPLIER = 5.0f * 2.0f;
+
+const float Blend::LIMIT_HEIGHT_MULTIPLIER = 2.5f;
+
 Blend::Blend()
 {
   m_wb.blendingType = BLEND_TYPE_NONE;
@@ -874,7 +878,7 @@ void Blend::ComputeMask(CSite *csite, BlendRect &vcrect, BlendRect &brect, Mosai
             {
                 double d1 = hypotSq(m_AllSites[ce->second].getVCenter().x - si,
                         m_AllSites[ce->second].getVCenter().y - sj);
-                if (d1 < dself)
+                if (d1 - dself < -1e-5)
                 {
                     break;
                 }

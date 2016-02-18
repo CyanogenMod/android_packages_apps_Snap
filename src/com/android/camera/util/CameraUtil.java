@@ -40,6 +40,7 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.ParcelFileDescriptor;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
@@ -89,7 +90,7 @@ public class CameraUtil {
     public static final String KEY_SHOW_WHEN_LOCKED = "showWhenLocked";
 
     // Orientation hysteresis amount used in rounding, in degrees
-    public static final int ORIENTATION_HYSTERESIS = 5;
+    public static final int ORIENTATION_HYSTERESIS = 10;
 
     public static final String REVIEW_ACTION = "com.android.camera.action.REVIEW";
     // See android.hardware.Camera.ACTION_NEW_PICTURE.
@@ -109,6 +110,7 @@ public class CameraUtil {
 
     // Fields from android.hardware.Camera.Parameters
     public static final String FOCUS_MODE_CONTINUOUS_PICTURE = "continuous-picture";
+    public static final String FOCUS_MODE_MW_CONTINUOUS_PICTURE = "mw_continuous-picture";
     public static final String RECORDING_HINT = "recording-hint";
     private static final String AUTO_EXPOSURE_LOCK_SUPPORTED = "auto-exposure-lock-supported";
     private static final String AUTO_WHITE_BALANCE_LOCK_SUPPORTED = "auto-whitebalance-lock-supported";
@@ -175,8 +177,16 @@ public class CameraUtil {
         return (params.get(key) != null && !"null".equals(params.get(key)));
     }
 
-    public static boolean isBurstSupported(Parameters params) {
-        return isSupported(params, "num-snaps-per-shutter");
+    public static int getNumSnapsPerShutter(Parameters params) {
+        String numJpegs = params.get("num-jpegs-per-shutter");
+        if (!TextUtils.isEmpty(numJpegs)) {
+            return Integer.valueOf(numJpegs);
+        }
+        String numSnaps = params.get("num-snaps-per-shutter");
+        if (!TextUtils.isEmpty(numSnaps)) {
+            return Integer.valueOf(numSnaps);
+        }
+        return 1;
     }
 
     // Private intent extras. Test only.
@@ -503,7 +513,7 @@ public class CameraUtil {
         } else {
             int dist = Math.abs(orientation - orientationHistory);
             dist = Math.min( dist, 360 - dist );
-            changeOrientation = ( dist >= 45 + ORIENTATION_HYSTERESIS );
+            changeOrientation = ( dist >= 60 + ORIENTATION_HYSTERESIS );
         }
         if (changeOrientation) {
             return ((orientation + 45) / 90 * 90) % 360;
@@ -533,7 +543,7 @@ public class CameraUtil {
     public static int getOptimalPreviewSize(Activity currentActivity,
             Point[] sizes, double targetRatio) {
         // Use a very small tolerance because we want an exact match.
-        final double ASPECT_TOLERANCE = 0.01;
+        final double ASPECT_TOLERANCE = 0.02;
         if (sizes == null) return -1;
 
         int optimalSizeIndex = -1;
@@ -756,7 +766,7 @@ public class CameraUtil {
                 + "," + rect.right + "," + rect.bottom + ")");
     }
 
-    public static void rectFToRect(RectF rectF, Rect rect) {
+    public static void inlineRectToRectF(RectF rectF, Rect rect) {
         rect.left = Math.round(rectF.left);
         rect.top = Math.round(rectF.top);
         rect.right = Math.round(rectF.right);
@@ -765,7 +775,7 @@ public class CameraUtil {
 
     public static Rect rectFToRect(RectF rectF) {
         Rect rect = new Rect();
-        rectFToRect(rectF, rect);
+        inlineRectToRectF(rectF, rect);
         return rect;
     }
 
@@ -783,21 +793,6 @@ public class CameraUtil {
         // UI coordinates range from (0, 0) to (width, height).
         matrix.postScale(viewWidth / 2000f, viewHeight / 2000f);
         matrix.postTranslate(viewWidth / 2f, viewHeight / 2f);
-    }
-
-    public static void prepareMatrix(Matrix matrix, boolean mirror, int displayOrientation,
-                                     Rect previewRect) {
-        // Need mirror for front camera.
-        matrix.setScale(mirror ? -1 : 1, 1);
-        // This is the value for android.hardware.Camera.setDisplayOrientation.
-        matrix.postRotate(displayOrientation);
-
-        // Camera driver coordinates range from (-1000, -1000) to (1000, 1000).
-        // We need to map camera driver coordinates to preview rect coordinates
-        Matrix mapping = new Matrix();
-        mapping.setRectToRect(new RectF(-1000, -1000, 1000, 1000), rectToRectF(previewRect),
-                Matrix.ScaleToFit.FILL);
-        matrix.setConcat(mapping, matrix);
     }
 
     public static String createJpegName(long dateTaken, boolean refocus) {
@@ -911,6 +906,19 @@ public class CameraUtil {
             }
         }
     }
+
+    public static boolean isLowLuminance(Parameters parameters) {
+        String lC = parameters.get(CameraSettings.KEY_LUMINANCE_CONITION);
+
+        if (lC != null) {
+            if (lC.equals(CameraSettings.LUMINANCE_CONITION_LOW)) {
+                Log.d(TAG, "Parameter " + CameraSettings.KEY_LUMINANCE_CONITION + "=" + CameraSettings.LUMINANCE_CONITION_LOW);
+                return true;
+            }
+        }
+        return false;
+   }
+
    public static String getFilpModeString(int value){
         switch(value){
             case 0:
@@ -1145,35 +1153,39 @@ public class CameraUtil {
     }
 
     public static int determinCloseRatio(float ratio) {
-        if (ratio < 1) {
-            ratio = 1 / ratio;
-        }
-
-        float diffFrom_4_3 = ((float) 4 / 3) / ratio;
-        if (diffFrom_4_3 < 1) {
-            diffFrom_4_3 = 1 / diffFrom_4_3;
-        }
-
-        float diffFrom_16_9 = ((float) 16 / 9) / ratio;
-        if (diffFrom_16_9 < 1) {
-            diffFrom_16_9 = 1 / diffFrom_16_9;
-        }
-
-        float diffFrom_3_2 = ((float) 3 / 2) / ratio;
-        if (diffFrom_3_2 < 1) {
-            diffFrom_3_2 = 1 / diffFrom_3_2;
-        }
         int retRatio = RATIO_UNKNOWN;
-        float minDiffRatio = diffFrom_3_2;
-        if (diffFrom_3_2 < diffFrom_4_3) {
-            retRatio = RATIO_3_2;
-            minDiffRatio = diffFrom_3_2;
-        } else {
-            retRatio = RATIO_4_3;
-            minDiffRatio = diffFrom_4_3;
-        }
-        if (minDiffRatio > diffFrom_16_9) {
-            retRatio = RATIO_16_9;
+
+        if (ratio != 1.0) {
+
+            if (ratio < 1) {
+                ratio = 1 / ratio;
+            }
+
+            float diffFrom_4_3 = ((float) 4 / 3) / ratio;
+            if (diffFrom_4_3 < 1) {
+                diffFrom_4_3 = 1 / diffFrom_4_3;
+            }
+
+            float diffFrom_16_9 = ((float) 16 / 9) / ratio;
+            if (diffFrom_16_9 < 1) {
+                diffFrom_16_9 = 1 / diffFrom_16_9;
+            }
+
+            float diffFrom_3_2 = ((float) 3 / 2) / ratio;
+            if (diffFrom_3_2 < 1) {
+                diffFrom_3_2 = 1 / diffFrom_3_2;
+            }
+            float minDiffRatio = diffFrom_3_2;
+            if (diffFrom_3_2 < diffFrom_4_3) {
+                retRatio = RATIO_3_2;
+                minDiffRatio = diffFrom_3_2;
+            } else {
+                retRatio = RATIO_4_3;
+                minDiffRatio = diffFrom_4_3;
+            }
+            if (minDiffRatio > diffFrom_16_9) {
+                retRatio = RATIO_16_9;
+            }
         }
         return retRatio;
     }

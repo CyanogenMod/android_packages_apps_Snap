@@ -387,10 +387,14 @@ public class WideAnglePanoramaModule
         // This is also forward compatible if we have a new facing other than
         // back or front in the future.
         if (cameraId == -1) cameraId = 0;
-        mCameraDevice = CameraUtil.openCamera(mActivity, cameraId,
-                mMainHandler, mActivity.getCameraOpenErrorCallback());
+
+        // If mCameraDevice has already exist,there is no need to obtain again
         if (mCameraDevice == null) {
-            return false;
+            mCameraDevice = CameraUtil.openCamera(mActivity, cameraId,
+                    mMainHandler, mActivity.getCameraOpenErrorCallback());
+            if (mCameraDevice == null) {
+                return false;
+            }
         }
         mCameraOrientation = CameraUtil.getCameraOrientation(cameraId);
         if (cameraId == CameraHolder.instance().getFrontCameraId()) mUsingFrontCamera = true;
@@ -864,9 +868,14 @@ public class WideAnglePanoramaModule
             perct = mActivity.getResources().getInteger(R.integer.panorama_frame_size_reduction);
         }
 
-        mMosaicFrameProcessor.initialize(mCameraPreviewWidth * perct / 100,
-                mCameraPreviewHeight * perct / 100, getPreviewBufSize());
-        mMosaicFrameProcessorInitialized = true;
+        int width = (mCameraPreviewWidth * perct) / 100;
+        int height = (mCameraPreviewHeight * perct) / 100;
+        if ((0 < width) && (0 < height)) {
+            mMosaicFrameProcessor.initialize(width, height, getPreviewBufSize());
+            mMosaicFrameProcessorInitialized = true;
+        } else {
+            throw new RuntimeException("Invalid preview dimension");
+        }
     }
 
     @Override
@@ -969,7 +978,9 @@ public class WideAnglePanoramaModule
         } else {
             // Camera must be initialized before MosaicFrameProcessor is
             // initialized. The preview size has to be decided by camera device.
-            initMosaicFrameProcessorIfNeeded();
+            if (! mMosaicFrameProcessorInitialized) {
+                initMosaicFrameProcessorIfNeeded();
+            }
             Point size = mUI.getPreviewAreaSize();
             mPreviewUIWidth = size.x;
             mPreviewUIHeight = size.y;
