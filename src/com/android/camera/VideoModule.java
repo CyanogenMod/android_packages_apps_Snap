@@ -561,7 +561,7 @@ public class VideoModule implements CameraModule,
 
     private boolean takeASnapshot() {
         // Only take snapshots if video snapshot is supported by device
-        if (CameraUtil.isVideoSnapshotSupported(mParameters) && !mIsVideoCaptureIntent) {
+        if (!CameraUtil.isVideoSnapshotSupported(mParameters) && !mIsVideoCaptureIntent) {
             if (!mMediaRecorderRecording || mPaused || mSnapshotInProgress) {
                 return false;
             }
