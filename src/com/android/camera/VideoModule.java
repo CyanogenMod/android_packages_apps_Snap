@@ -2871,7 +2871,6 @@ public class VideoModule implements CameraModule,
     }
 
     private void showTapToSnapshotToast() {
-        new RotateTextToast(mActivity, R.string.video_snapshot_hint, 0).show();
         // Clear the preference.
         Editor editor = mPreferences.edit();
         editor.putBoolean(CameraSettings.KEY_VIDEO_FIRST_USE_HINT_SHOWN, false);
