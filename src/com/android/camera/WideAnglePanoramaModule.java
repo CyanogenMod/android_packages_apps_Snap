@@ -294,9 +294,6 @@ public class WideAnglePanoramaModule
         CameraSettings.upgradeGlobalPreferences(mPreferences.getGlobal(), activity);
         mLocationManager = new LocationManager(mActivity, null);
 
-        // Power shutter
-        mActivity.initPowerShutter(mPreferences);
-
         mMainHandler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
@@ -900,9 +897,6 @@ public class WideAnglePanoramaModule
         mUI.showPreviewCover();
         releaseCamera();
 
-        // Load the power shutter
-        mActivity.initPowerShutter(mPreferences);
-
         synchronized (mRendererLock) {
             mCameraTexture = null;
 
@@ -1217,12 +1211,12 @@ public class WideAnglePanoramaModule
             case KeyEvent.KEYCODE_VOLUME_DOWN:
             case KeyEvent.KEYCODE_MEDIA_NEXT:
             case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
-                if (!CameraActivity.mPowerShutter && !CameraUtil.hasCameraKey()) {
+                if (!CameraUtil.hasCameraKey()) {
                     onShutterButtonClick();
                 }
                 return true;
             case KeyEvent.KEYCODE_POWER:
-                if (CameraActivity.mPowerShutter && !CameraUtil.hasCameraKey()) {
+                if (!CameraUtil.hasCameraKey()) {
                     onShutterButtonClick();
                 }
                 return true;

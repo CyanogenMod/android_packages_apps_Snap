@@ -15,16 +15,6 @@
      limitations under the License.
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string-array name="pref_switch_entryvalues" translatable="false">
-        <item>off</item>
-        <item>on</item>
-    </string-array>
-
-    <array name="pref_switch_entries" translatable="false">
-        <item>@string/setting_off</item>
-        <item>@string/setting_on</item>
-    </array>
-
     <!-- Touch focus duration -->
     <string-array name="pref_camera_focustime_duration_entries" translatable="false">
         <item>@string/pref_camera_focustime_entry_0</item>

@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2012 The Android Open Source Project
- * Copyright (C) 2013-2015 The CyanogenMod Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -511,12 +510,6 @@ public class PhotoModule
 
         mPreferences.setLocalId(mActivity, mCameraId);
         CameraSettings.upgradeLocalPreferences(mPreferences.getLocal());
-
-        // Power shutter
-        mActivity.initPowerShutter(mPreferences);
-
-        // Max brightness
-        mActivity.initMaxBrightness(mPreferences);
 
         if (mOpenCameraThread == null) {
             mOpenCameraThread = new OpenCameraThread();
@@ -2395,12 +2388,6 @@ public class PhotoModule
         // (e.g. onResume -> onPause -> onResume).
         stopPreview();
 
-        // Load the power shutter
-        mActivity.initPowerShutter(mPreferences);
-
-        // Load max brightness
-        mActivity.initMaxBrightness(mPreferences);
-
         mNamedImages = null;
 
         if (mLocationManager != null) mLocationManager.recordLocation(false);
@@ -2539,11 +2526,12 @@ public class PhotoModule
         if (!mActivity.isInCameraApp()) {
             return false;
         }
+
         switch (keyCode) {
             case KeyEvent.KEYCODE_VOLUME_UP:
             case KeyEvent.KEYCODE_MEDIA_NEXT:
                 if (mFirstTimeInitialized && (mUI.mMenuInitialized)) {
-                    if (!CameraActivity.mPowerShutter && !CameraUtil.hasCameraKey()) {
+                    if (!CameraUtil.hasCameraKey()) {
                         onShutterButtonFocus(true);
                     } else {
                         mUI.onScaleStepResize(true);
@@ -2553,7 +2541,7 @@ public class PhotoModule
             case KeyEvent.KEYCODE_VOLUME_DOWN:
             case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
                 if (mFirstTimeInitialized && (mUI.mMenuInitialized)) {
-                    if (!CameraActivity.mPowerShutter && !CameraUtil.hasCameraKey()) {
+                    if (!CameraUtil.hasCameraKey()) {
                         onShutterButtonFocus(true);
                     } else {
                         mUI.onScaleStepResize(false);
@@ -2585,12 +2573,6 @@ public class PhotoModule
                     mUI.pressShutterButton();
                 }
                 return true;
-            case KeyEvent.KEYCODE_POWER:
-                if (mFirstTimeInitialized && event.getRepeatCount() == 0
-                        && CameraActivity.mPowerShutter && !CameraUtil.hasCameraKey()) {
-                    onShutterButtonFocus(true);
-                }
-                return true;
         }
         return false;
     }
@@ -2602,7 +2584,7 @@ public class PhotoModule
             case KeyEvent.KEYCODE_VOLUME_DOWN:
             case KeyEvent.KEYCODE_MEDIA_NEXT:
             case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
-                if (!CameraActivity.mPowerShutter && !CameraUtil.hasCameraKey()
+                if (!CameraUtil.hasCameraKey()
                         && mFirstTimeInitialized) {
                     onShutterButtonClick();
                 }
@@ -2610,12 +2592,6 @@ public class PhotoModule
             case KeyEvent.KEYCODE_FOCUS:
                 if (mFirstTimeInitialized) {
                     onShutterButtonFocus(false);
-                }
-                return true;
-            case KeyEvent.KEYCODE_POWER:
-                if (CameraActivity.mPowerShutter && !CameraUtil.hasCameraKey()
-                        && mFirstTimeInitialized) {
-                    onShutterButtonClick();
                 }
                 return true;
         }
@@ -4264,8 +4240,6 @@ public class PhotoModule
          * later by posting a message to the handler */
         if (mUI.mMenuInitialized) {
             setCameraParametersWhenIdle(UPDATE_PARAM_PREFERENCE);
-            mActivity.initPowerShutter(mPreferences);
-            mActivity.initMaxBrightness(mPreferences);
         } else {
             mHandler.sendEmptyMessage(SET_PHOTO_UI_PARAMS);
         }

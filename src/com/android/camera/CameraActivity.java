@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2012 The Android Open Source Project
- * Copyright (C) 2013-2015 The CyanogenMod Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -200,10 +199,6 @@ public class CameraActivity extends Activity
     private long mStorageSpaceBytes = Storage.LOW_STORAGE_THRESHOLD_BYTES;
     private boolean mSecureCamera;
     private boolean mInCameraApp = true;
-    // Keep track of powershutter state
-    public static boolean mPowerShutter = false;
-    // Keep track of max brightness state
-    public static boolean mMaxBrightness = false;
     // This is a hack to speed up the start of SecureCamera.
     private static boolean sFirstStartAfterScreenOn = true;
     private int mLastRawOrientation;
@@ -1785,39 +1780,6 @@ public class CameraActivity extends Activity
             mStorageHint.cancel();
             mStorageHint = null;
         }
-    }
-
-    protected void initPowerShutter(ComboPreferences prefs) {
-        String val = prefs.getString(CameraSettings.KEY_POWER_SHUTTER,
-                getResources().getString(R.string.pref_camera_power_shutter_default));
-        if (!CameraUtil.hasCameraKey()) {
-            mPowerShutter = val.equals(CameraSettings.VALUE_ON);
-        }
-        if (mPowerShutter && mInCameraApp) {
-            getWindow().addPrivateFlags(
-                    WindowManager.LayoutParams.PRIVATE_FLAG_PREVENT_POWER_KEY);
-        } else {
-            getWindow().clearPrivateFlags(
-                    WindowManager.LayoutParams.PRIVATE_FLAG_PREVENT_POWER_KEY);
-        }
-    }
-
-    protected void initMaxBrightness(ComboPreferences prefs) {
-        String val = prefs.getString(CameraSettings.KEY_MAX_BRIGHTNESS,
-                getResources().getString(R.string.pref_camera_max_brightness_default));
-
-        Window win = getWindow();
-        WindowManager.LayoutParams params = win.getAttributes();
-
-        mMaxBrightness = val.equals(CameraSettings.VALUE_ON);
-
-        if (mMaxBrightness && mInCameraApp) {
-            params.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL;
-        } else {
-            params.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE;
-        }
-
-        win.setAttributes(params);
     }
 
     protected void setResultEx(int resultCode) {
