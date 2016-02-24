@@ -96,4 +96,14 @@
         <item>auto</item>
         <item>continuous-video</item>
     </string-array>
+    <string-array name="pref_switch_entryvalues" translatable="false">
+        <item>off</item>
+        <item>on</item>
+    </string-array>
+
+    <array name="pref_switch_entries" translatable="false">
+        <item>@string/setting_off</item>
+        <item>@string/setting_on</item>
+    </array>
+
 </resources>
