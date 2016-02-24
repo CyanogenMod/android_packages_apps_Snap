@@ -25,5 +25,4 @@
     android:paddingRight="8dip"
     android:paddingTop="16dip"
     android:paddingBottom="16dip"
-    android:background="@color/white"
-    android:elevation="6dp" />
+    android:background="@color/black" />
