@@ -140,11 +140,13 @@ public class PhotoModule
     private static final int SWITCH_TO_GCAM_MODULE = 12;
     private static final int ON_PREVIEW_STARTED = 13;
     private static final int UPDATE_GESTURES_UI = 14;
+    private static final int SET_FOCUS_RATIO = 15;
 
     // The subset of parameters we need to update in setCameraParameters().
     private static final int UPDATE_PARAM_INITIALIZE = 1;
     private static final int UPDATE_PARAM_ZOOM = 2;
     private static final int UPDATE_PARAM_PREFERENCE = 4;
+    private static final int UPDATE_PARAM_FOCUS = 8;
     private static final int UPDATE_PARAM_ALL = -1;
 
     // This is the delay before we execute onResume tasks when coming
@@ -487,6 +489,11 @@ public class PhotoModule
 
                 case UPDATE_GESTURES_UI: {
                     updateGesturesUI();
+                    break;
+                }
+
+                case SET_FOCUS_RATIO: {
+                    mUI.getFocusRing().setRadiusRatio((Float)msg.obj);
                     break;
                 }
             }
@@ -926,6 +933,14 @@ public class PhotoModule
             mCameraDevice.stopFaceDetection();
             mUI.onStopFaceDetection();
         }
+    }
+
+    @Override
+    public void setFocusRatio(float ratio) {
+        mHandler.removeMessages(SET_FOCUS_RATIO);
+        Message m = mHandler.obtainMessage(SET_FOCUS_RATIO);
+        m.obj = ratio;
+        mHandler.sendMessage(m);
     }
 
     // TODO: need to check cached background apps memory and longshot ION memory
@@ -1443,6 +1458,8 @@ public class PhotoModule
         @Override
         public void onAutoFocusMoving(
                 boolean moving, CameraProxy camera) {
+            mCameraDevice.refreshParameters();
+            mFocusManager.setParameters(mCameraDevice.getParameters());
             mFocusManager.onAutoFocusMoving(moving);
         }
     }
@@ -1658,7 +1675,7 @@ public class PhotoModule
 
     @Override
     public void setFocusParameters() {
-        setCameraParameters(UPDATE_PARAM_PREFERENCE);
+        setCameraParameters(UPDATE_PARAM_FOCUS);
     }
 
     private Location getLocationAccordPictureFormat(String pictureFormat) {
@@ -2512,7 +2529,7 @@ public class PhotoModule
             mCameraDevice.cancelAutoFocus();
             setCameraState(IDLE);
             mFocusManager.setAeAwbLock(false);
-            setCameraParameters(UPDATE_PARAM_PREFERENCE);
+            setFocusParameters();
         }
     }
 
@@ -3406,7 +3423,7 @@ public class PhotoModule
         // initialize focus mode
         if ((mManual3AEnabled & MANUAL_FOCUS) == 0) {
             mFocusManager.overrideFocusMode(null);
-            mParameters.setFocusMode(mFocusManager.getFocusMode(false));
+            updateCameraParametersFocus();
         }
 
         // Set picture size.
@@ -3635,23 +3652,31 @@ public class PhotoModule
             }
         }
 
-        if (mContinuousFocusSupported && ApiHelper.HAS_AUTO_FOCUS_MOVE_CALLBACK) {
-            updateAutoFocusMoveCallback();
-        }
+        enableAutoFocusMoveCallback();
+
         //QCom related parameters updated here.
         qcomUpdateCameraParametersPreference();
         return doGcamModeSwitch;
     }
 
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
-    private void updateAutoFocusMoveCallback() {
-        if (mParameters.getFocusMode().equals(CameraUtil.FOCUS_MODE_CONTINUOUS_PICTURE) ||
-            mParameters.getFocusMode().equals(CameraUtil.FOCUS_MODE_MW_CONTINUOUS_PICTURE)) {
-            mCameraDevice.setAutoFocusMoveCallback(mHandler,
-                    (CameraAFMoveCallback) mAutoFocusMoveCallback);
-        } else {
-            mCameraDevice.setAutoFocusMoveCallback(null, null);
+    private void enableAutoFocusMoveCallback() {
+        if (mContinuousFocusSupported && ApiHelper.HAS_AUTO_FOCUS_MOVE_CALLBACK) {
+            if (mParameters.getFocusMode().equals(CameraUtil.FOCUS_MODE_CONTINUOUS_PICTURE)) {
+                mCameraDevice.setAutoFocusMoveCallback(mHandler,
+                        (CameraAFMoveCallback) mAutoFocusMoveCallback);
+            } else {
+                mCameraDevice.setAutoFocusMoveCallback(null, null);
+            }
         }
+    }
+
+    private void updateCameraParametersFocus() {
+        setAutoExposureLockIfSupported();
+        setAutoWhiteBalanceLockIfSupported();
+        setFocusAreasIfSupported();
+        setMeteringAreasIfSupported();
+        mParameters.setFocusMode(mFocusManager.getFocusMode(false));
     }
 
     // We separate the parameters into several subsets, so we can update only
@@ -3676,7 +3701,13 @@ public class PhotoModule
                 doModeSwitch = updateCameraParametersPreference();
             }
 
+            if ((updateSet & UPDATE_PARAM_FOCUS) != 0) {
+                updateCameraParametersFocus();
+            }
+
             mCameraDevice.setParameters(mParameters);
+            mParameters = mCameraDevice.getParameters();
+            mFocusManager.setParameters(mParameters);
 
             // Switch to gcam module if HDR+ was selected
             if (doModeSwitch && !mIsImageCaptureIntent) {
