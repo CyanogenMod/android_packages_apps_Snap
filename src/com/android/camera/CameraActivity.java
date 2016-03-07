@@ -247,6 +247,7 @@ public class CameraActivity extends Activity
     // FilmStripView.setDataAdapter fires 2 onDataLoaded calls before any data is actually loaded
     // Keep track of data request here to avoid creating useless UpdateThumbnailTask.
     private boolean mDataRequested;
+    private Cursor mCursor;
 
     private WakeLock mWakeLock;
     private Context mContext;
@@ -1419,6 +1420,8 @@ public class CameraActivity extends Activity
             mSecureCamera = intent.getBooleanExtra(SECURE_CAMERA_EXTRA, false);
         }
 
+        mCursor = getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null, null);
+
         if (mSecureCamera) {
             // Change the window flags so that secure camera can show when locked
             Window win = getWindow();
@@ -1739,6 +1742,8 @@ public class CameraActivity extends Activity
         getContentResolver().unregisterContentObserver(mLocalVideosObserver);
         unregisterReceiver(mSDcardMountedReceiver);
 
+        mCursor.close();
+        mCursor=null;
         super.onDestroy();
     }
 
