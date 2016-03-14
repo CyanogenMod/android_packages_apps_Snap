@@ -53,6 +53,7 @@ public class ModuleSwitcher extends RotateImageView
     public static final int LIGHTCYCLE_MODULE_INDEX = 3;
     public static final int GCAM_MODULE_INDEX = 4;
     private boolean mTouchEnabled = true;
+    private boolean mIsVisible = true;
 
     private static final int[] DRAW_IDS = {
             R.drawable.ic_switch_camera,
@@ -97,7 +98,7 @@ public class ModuleSwitcher extends RotateImageView
 
     private void init(Context context) {
         mItemSize = context.getResources().getDimensionPixelSize(R.dimen.switcher_size);
-        mIndicator = context.getResources().getDrawable(R.drawable.ic_switcher_menu_indicator);
+        mIndicator = context.getResources().getDrawable(R.color.transparent);
         initializeDrawables(context);
     }
 
@@ -267,9 +268,15 @@ public class ModuleSwitcher extends RotateImageView
         mParent.setOnTouchListener(null);
     }
 
+    public void setSwitcherVisibility(boolean isVisible) {
+        mIsVisible = isVisible;
+    }
+
     public void removePopup() {
         mShowingPopup = false;
-        setVisibility(View.VISIBLE);
+        if (mIsVisible) {
+            setVisibility(View.VISIBLE);
+        }
         if (mPopup != null) {
             ((ViewGroup) mParent).removeView(mPopup);
             mPopup = null;

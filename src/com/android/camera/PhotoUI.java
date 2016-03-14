@@ -30,6 +30,7 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Point;
+import android.graphics.RectF;
 import android.graphics.drawable.AnimationDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.hardware.Camera;
@@ -55,7 +56,6 @@ import android.widget.PopupWindow;
 import android.widget.Toast;
 
 import com.android.camera.CameraPreference.OnPreferenceChangedListener;
-import com.android.camera.FocusOverlayManager.FocusUI;
 import com.android.camera.ui.AbstractSettingPopup;
 import com.android.camera.ui.CameraControls;
 import com.android.camera.ui.CameraRootView;
@@ -71,11 +71,11 @@ import com.android.camera.ui.RenderOverlay;
 import com.android.camera.ui.RotateLayout;
 import com.android.camera.ui.RotateTextToast;
 import com.android.camera.ui.ZoomRenderer;
+import com.android.camera.ui.focus.FocusRing;
 import com.android.camera.util.CameraUtil;
 
 public class PhotoUI implements PieListener,
         PreviewGestures.SingleTapListener,
-        FocusUI,
         SurfaceHolder.Callback,
         LocationManager.Listener,
         CameraRootView.MyDisplayListener,
@@ -84,6 +84,7 @@ public class PhotoUI implements PieListener,
     private static final String TAG = "CAM_UI";
     private int mDownSampleFactor = 4;
     private final AnimationManager mAnimationManager;
+    private final FocusRing mFocusRing;
     private CameraActivity mActivity;
     private PhotoController mController;
     private PreviewGestures mGestures;
@@ -108,9 +109,6 @@ public class PhotoUI implements PieListener,
     private ModuleSwitcher mSwitcher;
     private CameraControls mCameraControls;
     private AlertDialog mLocationDialog;
-
-    // Small indicators which show the camera settings in the viewfinder.
-    private OnScreenIndicators mOnScreenIndicators;
 
     private PieRenderer mPieRenderer;
     private ZoomRenderer mZoomRenderer;
@@ -235,10 +233,12 @@ public class PhotoUI implements PieListener,
                     int oldBottom) {
                 int width = right - left;
                 int height = bottom - top;
+                boolean isMaxSizeBeingValid = false;
 
                 if (mMaxPreviewWidth == 0 && mMaxPreviewHeight == 0) {
                     mMaxPreviewWidth = width;
                     mMaxPreviewHeight = height;
+                    isMaxSizeBeingValid = true;
                 }
 
                 int orientation = mActivity.getResources().getConfiguration().orientation;
@@ -257,7 +257,7 @@ public class PhotoUI implements PieListener,
                     }
                 }
                 if (mOrientationResize != mPrevOrientationResize
-                        || mAspectRatioResize) {
+                        || mAspectRatioResize || isMaxSizeBeingValid) {
                     layoutPreview(mAspectRatio);
                     mAspectRatioResize = false;
                 }
@@ -289,13 +289,13 @@ public class PhotoUI implements PieListener,
             mFaceView = (FaceView) mRootView.findViewById(R.id.face_view);
             setSurfaceTextureSizeChangedListener(mFaceView);
         }
-        initIndicators();
+        mFocusRing = (FocusRing) mRootView.findViewById(R.id.focus_ring);
         mAnimationManager = new AnimationManager();
         mOrientationResize = false;
         mPrevOrientationResize = false;
 
         Point size = new Point();
-        mActivity.getWindowManager().getDefaultDisplay().getSize(size);
+        mActivity.getWindowManager().getDefaultDisplay().getRealSize(size);
         mScreenRatio = CameraUtil.determineRatio(size.x, size.y);
         if (mScreenRatio == CameraUtil.RATIO_16_9) {
             int l = size.x > size.y ? size.x : size.y;
@@ -442,6 +442,9 @@ public class PhotoUI implements PieListener,
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
         Log.v(TAG, "surfaceChanged: width =" + width + ", height = " + height);
+        RectF r = new RectF(mSurfaceView.getLeft(), mSurfaceView.getTop(),
+                mSurfaceView.getRight(), mSurfaceView.getBottom());
+        mController.onPreviewRectChanged(CameraUtil.rectFToRect(r));
     }
 
     @Override
@@ -461,11 +464,6 @@ public class PhotoUI implements PieListener,
 
     public View getRootView() {
         return mRootView;
-    }
-
-    private void initIndicators() {
-        mOnScreenIndicators = new OnScreenIndicators(mActivity,
-                mRootView.findViewById(R.id.on_screen_indicators));
     }
 
     public void onCameraOpened(PreferenceGroup prefGroup, ComboPreferences prefs,
@@ -500,7 +498,6 @@ public class PhotoUI implements PieListener,
         mRenderOverlay.requestLayout();
 
         initializeZoom(params);
-        updateOnScreenIndicators(params, prefGroup, prefs);
         mActivity.setPreviewGestures(mGestures);
     }
 
@@ -524,12 +521,16 @@ public class PhotoUI implements PieListener,
         }
     }
 
+    public boolean isCameraControlsAnimating() {
+        return mCameraControls.isAnimating();
+    }
+
     public void initializeControlByIntent() {
         mThumbnail = (ImageView) mRootView.findViewById(R.id.preview_thumb);
         mThumbnail.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!CameraControls.isAnimating()
+                if (!isCameraControlsAnimating()
                         && mController.getCameraState() != PhotoController.SNAPSHOT_IN_PROGRESS)
                     mActivity.gotoGallery();
             }
@@ -545,6 +546,7 @@ public class PhotoUI implements PieListener,
         });
         if (mController.isImageCaptureIntent()) {
             hideSwitcher();
+            mSwitcher.setSwitcherVisibility(false);
             ViewGroup cameraControls = (ViewGroup) mRootView.findViewById(R.id.camera_controls);
             mActivity.getLayoutInflater().inflate(R.layout.review_module_control, cameraControls);
 
@@ -606,24 +608,9 @@ public class PhotoUI implements PieListener,
     // called from onResume but only the first time
     public void initializeFirstTime() {
         // Initialize shutter button.
-        mShutterButton.setImageResource(R.drawable.shutter_button_anim);
-        mShutterButton.setOnClickListener(new OnClickListener()
-        {
-            @Override
-            public void onClick(View v) {
-                if (!CameraControls.isAnimating())
-                    doShutterAnimation();
-            }
-        });
-
+        mShutterButton.setImageResource(R.drawable.btn_new_shutter);
         mShutterButton.setOnShutterButtonListener(mController);
         mShutterButton.setVisibility(View.VISIBLE);
-    }
-
-    public void doShutterAnimation() {
-        AnimationDrawable frameAnimation = (AnimationDrawable) mShutterButton.getDrawable();
-        frameAnimation.stop();
-        frameAnimation.start();
     }
 
     // called from onResume every other time
@@ -699,28 +686,16 @@ public class PhotoUI implements PieListener,
         mMenu.overrideSettings(keyvalues);
     }
 
-    public void updateOnScreenIndicators(Camera.Parameters params,
-            PreferenceGroup group, ComboPreferences prefs) {
-        if (params == null || group == null) return;
-        mOnScreenIndicators.updateSceneOnScreenIndicator(params.getSceneMode());
-        mOnScreenIndicators.updateExposureOnScreenIndicator(params,
-                CameraSettings.readExposure(prefs));
-        mOnScreenIndicators.updateFlashOnScreenIndicator(params.getFlashMode());
-        int wbIndex = -1;
-        String wb = Camera.Parameters.WHITE_BALANCE_AUTO;
-        if (Camera.Parameters.SCENE_MODE_AUTO.equals(params.getSceneMode())) {
-            wb = params.getWhiteBalance();
-        }
-        ListPreference pref = group.findPreference(CameraSettings.KEY_WHITE_BALANCE);
-        if (pref != null) {
-            wbIndex = pref.findIndexOfValue(wb);
-        }
-        // make sure the correct value was found
-        // otherwise use auto index
-        mOnScreenIndicators.updateWBIndicator(wbIndex < 0 ? 2 : wbIndex);
-        boolean location = RecordLocationPreference.get(
-                prefs, mActivity.getContentResolver());
-        mOnScreenIndicators.updateLocationIndicator(location);
+    public void setAutoHdrEnabled(boolean enabled) {
+        mCameraControls.setAutoHdrEnabled(enabled);
+    }
+
+    public void setHistogramEnabled(boolean enabled, CameraManager.CameraProxy camera) {
+        mCameraControls.setHistogramEnabled(enabled, camera);
+    }
+
+    public void updateHistogramData(int[] data) {
+        mCameraControls.updateHistogramData(data);
     }
 
     public void setCameraState(int state) {
@@ -787,7 +762,6 @@ public class PhotoUI implements PieListener,
         if (mPieRenderer != null) {
             mPieRenderer.setBlockFocus(!previewFocused);
         }
-        setShowMenu(previewFocused);
         if (!previewFocused && mCountDownView != null) mCountDownView.cancelCountDown();
     }
 
@@ -967,12 +941,6 @@ public class PhotoUI implements PieListener,
         }
     }
 
-    private void setShowMenu(boolean show) {
-        if (mOnScreenIndicators != null) {
-            mOnScreenIndicators.setVisibility(show ? View.VISIBLE : View.GONE);
-        }
-    }
-
     public boolean collapseCameraControls() {
         // TODO: Mode switcher should behave like a popup and should hide itself when there
         // is a touch outside of it.
@@ -992,27 +960,25 @@ public class PhotoUI implements PieListener,
     }
 
     protected void showCapturedImageForReview(byte[] jpegData, int orientation, boolean mirror) {
+        mCameraControls.hideCameraSettings();
         mDecodeTaskForReview = new DecodeImageForReview(jpegData, orientation, mirror);
         mDecodeTaskForReview.execute();
-        mOnScreenIndicators.setVisibility(View.GONE);
         mMenuButton.setVisibility(View.GONE);
         CameraUtil.fadeIn(mReviewDoneButton);
         mShutterButton.setVisibility(View.INVISIBLE);
         CameraUtil.fadeIn(mReviewRetakeButton);
-        pauseFaceDetection();
     }
 
     protected void hidePostCaptureAlert() {
+        mCameraControls.showCameraSettings();
         if (mDecodeTaskForReview != null) {
             mDecodeTaskForReview.cancel(true);
         }
         mReviewImage.setVisibility(View.GONE);
-        mOnScreenIndicators.setVisibility(View.VISIBLE);
         mMenuButton.setVisibility(View.VISIBLE);
         CameraUtil.fadeOut(mReviewDoneButton);
         mShutterButton.setVisibility(View.VISIBLE);
         CameraUtil.fadeOut(mReviewRetakeButton);
-        resumeFaceDetection();
     }
 
     public void setDisplayOrientation(int orientation) {
@@ -1120,11 +1086,13 @@ public class PhotoUI implements PieListener,
     public void cancelCountDown() {
         if (mCountDownView == null) return;
         mCountDownView.cancelCountDown();
+        showUIAfterCountDown();
     }
 
     public void startCountDown(int sec, boolean playSound) {
         if (mCountDownView == null) initializeCountDown();
         mCountDownView.startCountDown(sec, playSound);
+        hideUIWhileCountDown();
     }
 
     public void showPreferencesToast() {
@@ -1167,58 +1135,8 @@ public class PhotoUI implements PieListener,
         ((CameraRootView) mRootView).removeDisplayChangeListener();
     }
 
-    // focus UI implementation
-
-    private FocusIndicator getFocusIndicator() {
-        return (mFaceView != null && mFaceView.faceExists()) ? mFaceView : mPieRenderer;
-    }
-
-    @Override
-    public boolean hasFaces() {
-        return (mFaceView != null && mFaceView.faceExists());
-    }
-
-    public void clearFaces() {
-        if (mFaceView != null) mFaceView.clear();
-    }
-
-    @Override
-    public void clearFocus() {
-        FocusIndicator indicator = getFocusIndicator();
-        if (indicator != null) indicator.clear();
-    }
-
-    @Override
-    public void setFocusPosition(int x, int y) {
-        mPieRenderer.setFocus(x, y);
-    }
-
-    @Override
-    public void onFocusStarted() {
-        FocusIndicator indicator = getFocusIndicator();
-        if (indicator != null) indicator.showStart();
-    }
-
-    @Override
-    public void onFocusSucceeded(boolean timeout) {
-        FocusIndicator indicator = getFocusIndicator();
-        if (indicator != null) indicator.showSuccess(timeout);
-    }
-
-    @Override
-    public void onFocusFailed(boolean timeout) {
-        FocusIndicator indicator = getFocusIndicator();
-        if (indicator != null) indicator.showFail(timeout);
-    }
-
-    @Override
-    public void pauseFaceDetection() {
-        if (mFaceView != null) mFaceView.pause();
-    }
-
-    @Override
-    public void resumeFaceDetection() {
-        if (mFaceView != null) mFaceView.resume();
+    public FocusRing getFocusRing() {
+        return mFocusRing;
     }
 
     public void onStartFaceDetection(int orientation, boolean mirror) {
@@ -1299,5 +1217,15 @@ public class PhotoUI implements PieListener,
 
     public void adjustOrientation() {
         setOrientation(mOrientation, true);
+    }
+
+    public void hideUIWhileCountDown() {
+        mMenu.hideCameraControls(true);
+        mGestures.setZoomOnly(true);
+    }
+
+    public void showUIAfterCountDown() {
+        mMenu.hideCameraControls(false);
+        mGestures.setZoomOnly(false);
     }
 }

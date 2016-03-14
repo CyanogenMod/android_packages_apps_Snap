@@ -38,7 +38,6 @@ import android.widget.LinearLayout;
 import android.widget.FrameLayout;
 import android.widget.FrameLayout.LayoutParams;
 
-import com.android.camera.ui.CameraControls;
 import com.android.camera.ui.ListSubMenu;
 import com.android.camera.ui.ListMenu;
 import com.android.camera.ui.TimeIntervalPopup;
@@ -110,7 +109,8 @@ public class VideoMenu extends MenuController
         mOtherKeys1 = new String[] {
                 CameraSettings.KEY_VIDEOCAMERA_FLASH_MODE,
                 CameraSettings.KEY_VIDEO_QUALITY,
-                CameraSettings.KEY_FOCUS_TIME,
+                CameraSettings.KEY_VIDEOCAMERA_FOCUS_MODE,
+                CameraSettings.KEY_VIDEOCAMERA_FOCUS_TIME,
                 CameraSettings.KEY_RECORD_LOCATION,
                 CameraSettings.KEY_CAMERA_SAVEPATH,
                 CameraSettings.KEY_EXPOSURE,
@@ -122,7 +122,9 @@ public class VideoMenu extends MenuController
         mOtherKeys2 = new String[] {
                 CameraSettings.KEY_VIDEOCAMERA_FLASH_MODE,
                 CameraSettings.KEY_VIDEO_QUALITY,
-                CameraSettings.KEY_FOCUS_TIME,
+                CameraSettings.KEY_VIDEO_SNAPSHOT_SIZE,
+                CameraSettings.KEY_VIDEOCAMERA_FOCUS_MODE,
+                CameraSettings.KEY_VIDEOCAMERA_FOCUS_TIME,
                 CameraSettings.KEY_RECORD_LOCATION,
                 CameraSettings.KEY_CAMERA_SAVEPATH,
                 CameraSettings.KEY_EXPOSURE,
@@ -137,7 +139,7 @@ public class VideoMenu extends MenuController
                 CameraSettings.KEY_VIDEO_ENCODER,
                 CameraSettings.KEY_AUDIO_ENCODER,
                 CameraSettings.KEY_VIDEO_HDR,
-                CameraSettings.KEY_POWER_MODE,
+                CameraSettings.KEY_ANTIBANDING,
                 CameraSettings.KEY_VIDEO_ROTATION,
                 CameraSettings.KEY_VIDEO_CDS_MODE,
                 CameraSettings.KEY_VIDEO_TNR_MODE
@@ -641,7 +643,7 @@ public class VideoMenu extends MenuController
     }
 
     public void openFirstLevel() {
-        if (isMenuBeingShown() || CameraControls.isAnimating())
+        if (isMenuBeingShown() || mUI.isCameraControlsAnimating())
             return;
         if (mListMenu == null || mPopupStatus != POPUP_FIRST_LEVEL) {
             initializePopup();

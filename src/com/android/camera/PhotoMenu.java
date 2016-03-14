@@ -44,7 +44,6 @@ import android.widget.FrameLayout;
 import android.widget.FrameLayout.LayoutParams;
 
 import com.android.camera.CameraPreference.OnPreferenceChangedListener;
-import com.android.camera.ui.CameraControls;
 import com.android.camera.ui.CountdownTimerPopup;
 import com.android.camera.ui.ListSubMenu;
 import com.android.camera.ui.ListMenu;
@@ -88,6 +87,9 @@ public class PhotoMenu extends MenuController
     private View mFrontBackSwitcher;
     private View mSceneModeSwitcher;
     private View mFilterModeSwitcher;
+    private View mCameraSwitcher;
+    private View mSettingMenu;
+    private View mPreviewThumbnail;
     private PhotoUI mUI;
     private int mPopupStatus;
     private int mPreviewMenuStatus;
@@ -111,6 +113,9 @@ public class PhotoMenu extends MenuController
         mHdrSwitcher = ui.getRootView().findViewById(R.id.hdr_switcher);
         mSceneModeSwitcher = ui.getRootView().findViewById(R.id.scene_mode_switcher);
         mFilterModeSwitcher = ui.getRootView().findViewById(R.id.filter_mode_switcher);
+        mSettingMenu = ui.getRootView().findViewById(R.id.menu);
+        mCameraSwitcher = ui.getRootView().findViewById(R.id.camera_switcher);
+        mPreviewThumbnail = ui.getRootView().findViewById(R.id.preview_thumb);
     }
 
     public void initialize(PreferenceGroup group) {
@@ -150,6 +155,7 @@ public class PhotoMenu extends MenuController
                 CameraSettings.KEY_WHITE_BALANCE,
                 CameraSettings.KEY_FOCUS_MODE,
                 CameraSettings.KEY_FOCUS_TIME,
+                CameraSettings.KEY_SHUTTER_SPEED,
                 CameraSettings.KEY_REDEYE_REDUCTION,
                 CameraSettings.KEY_POWER_SHUTTER,
                 CameraSettings.KEY_MAX_BRIGHTNESS
@@ -169,6 +175,7 @@ public class PhotoMenu extends MenuController
                 CameraSettings.KEY_WHITE_BALANCE,
                 CameraSettings.KEY_FOCUS_MODE,
                 CameraSettings.KEY_FOCUS_TIME,
+                CameraSettings.KEY_SHUTTER_SPEED,
                 CameraSettings.KEY_REDEYE_REDUCTION,
                 CameraSettings.KEY_POWER_SHUTTER,
                 CameraSettings.KEY_MAX_BRIGHTNESS,
@@ -181,7 +188,6 @@ public class PhotoMenu extends MenuController
                 CameraSettings.KEY_ZSL,
                 CameraSettings.KEY_TIMER_SOUND_EFFECTS,
                 CameraSettings.KEY_FACE_RECOGNITION,
-                CameraSettings.KEY_TOUCH_AF_AEC,
                 CameraSettings.KEY_SELECTABLE_ZONE_AF,
                 CameraSettings.KEY_PICTURE_FORMAT,
                 CameraSettings.KEY_SATURATION,
@@ -505,6 +511,11 @@ public class PhotoMenu extends MenuController
             return false;
         Rect rec = new Rect();
         mUI.getPreviewMenuLayout().getChildAt(0).getHitRect(rec);
+        if (View.LAYOUT_DIRECTION_RTL == TextUtils
+                .getLayoutDirectionFromLocale(Locale.getDefault())) {
+            rec.left = mUI.getRootView().getWidth() - (rec.right-rec.left);
+            rec.right = mUI.getRootView().getWidth();
+        }
         rec.top += (int) mUI.getPreviewMenuLayout().getY();
         rec.bottom += (int) mUI.getPreviewMenuLayout().getY();
         return rec.contains((int) ev.getX(), (int) ev.getY());
@@ -547,7 +558,6 @@ public class PhotoMenu extends MenuController
                 mPrevSavedCDS = cds;
             }
 
-            mListMenu.setPreferenceEnabled(CameraSettings.KEY_TNR_MODE, false);
             if ((tnr != null) && !mActivity.getString(R.string.
                     pref_camera_tnr_default).equals(tnr)) {
                 mListMenu.setPreferenceEnabled(CameraSettings.KEY_CDS_MODE, false);
@@ -613,7 +623,6 @@ public class PhotoMenu extends MenuController
                 || ((autohdr != null) && autohdr.equals("enable"))) {
             popup1.setPreferenceEnabled(CameraSettings.KEY_FOCUS_MODE, false);
             popup1.setPreferenceEnabled(CameraSettings.KEY_AUTOEXPOSURE, false);
-            popup1.setPreferenceEnabled(CameraSettings.KEY_TOUCH_AF_AEC, false);
             popup1.setPreferenceEnabled(CameraSettings.KEY_SATURATION, false);
             popup1.setPreferenceEnabled(CameraSettings.KEY_CONTRAST, false);
             popup1.setPreferenceEnabled(CameraSettings.KEY_SHARPNESS, false);
@@ -676,7 +685,6 @@ public class PhotoMenu extends MenuController
                 popup1.setPreferenceEnabled(CameraSettings.KEY_REDEYE_REDUCTION, false);
                 popup1.setPreferenceEnabled(CameraSettings.KEY_EXPOSURE, false);
                 popup1.setPreferenceEnabled(CameraSettings.KEY_COLOR_EFFECT, false);
-                popup1.setPreferenceEnabled(CameraSettings.KEY_TOUCH_AF_AEC, false);
                 popup1.setPreferenceEnabled(CameraSettings.KEY_SCENE_MODE, false);
 
                 setPreference(CameraSettings.KEY_CAMERA_HDR, mSettingOff);
@@ -1021,7 +1029,7 @@ public class PhotoMenu extends MenuController
     }
 
     public void openFirstLevel() {
-        if (isMenuBeingShown() || CameraControls.isAnimating())
+        if (isMenuBeingShown() || mUI.isCameraControlsAnimating())
             return;
         if (mListMenu == null || mPopupStatus != POPUP_FIRST_LEVEL) {
             initializePopup();
@@ -1163,9 +1171,11 @@ public class PhotoMenu extends MenuController
         } else if (notSame(pref,CameraSettings.KEY_FLASH_MODE,"Off")) {
             ListPreference aePref =
                       mPreferenceGroup.findPreference(CameraSettings.KEY_AE_BRACKET_HDR);
-            if (notSame(aePref,CameraSettings.KEY_AE_BRACKET_HDR,"Off")) {
-               RotateTextToast.makeText(mActivity,
-                              R.string.flash_aebracket_message,Toast.LENGTH_SHORT).show();
+            if (aePref != null) {
+                if (notSame(aePref,CameraSettings.KEY_AE_BRACKET_HDR,"Off")) {
+                   RotateTextToast.makeText(mActivity,
+                                  R.string.flash_aebracket_message,Toast.LENGTH_SHORT).show();
+                }
             }
         } else if (notSame(pref, CameraSettings.KEY_LONGSHOT, mSettingOff)) {
             ListPreference advancefeaturePref =
@@ -1208,5 +1218,16 @@ public class PhotoMenu extends MenuController
 
     public int getOrientation() {
         return mUI == null ? 0 : mUI.getOrientation();
+    }
+
+    public void hideCameraControls(boolean hide) {
+        final int status = (hide) ? View.INVISIBLE : View.VISIBLE;
+        mSettingMenu.setVisibility(status);
+        mFrontBackSwitcher.setVisibility(status);
+        mHdrSwitcher.setVisibility(status);
+        mSceneModeSwitcher.setVisibility(status);
+        mFilterModeSwitcher.setVisibility(status);
+        mCameraSwitcher.setVisibility(status);
+        mPreviewThumbnail.setVisibility(status);
     }
 }

@@ -23,7 +23,8 @@
     <com.android.camera.ui.FilmStripView
         android:id="@+id/filmstrip_view"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:clipToPadding="false" />
 
     <!--com.android.camera.ui.FitSystemUiFrameLayout-->
     <FrameLayout
@@ -48,9 +49,8 @@
             <TextView
                 android:id="@+id/pano_stitching_progress_text"
                 android:text="@string/rendering_photo_sphere"
-                android:textColor="#ffffffff"
+                android:textColor="@color/white"
                 android:textSize="14sp"
-                android:shadowColor="#ff000000"
                 android:shadowDx="0"
                 android:shadowDy="0"
                 android:shadowRadius="2"
@@ -61,7 +61,7 @@
 
             <ProgressBar
                 android:id="@+id/pano_stitching_progress_bar"
-                style="@android:style/Widget.Holo.Light.ProgressBar.Horizontal"
+                style="@android:style/Widget.Material.Light.ProgressBar.Horizontal"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:visibility="visible"

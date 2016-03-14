@@ -45,7 +45,6 @@ import android.widget.TextView;
 import android.view.View.OnLayoutChangeListener;
 
 import com.android.camera.CameraPreference.OnPreferenceChangedListener;
-import com.android.camera.FocusOverlayManager.FocusUI;
 import com.android.camera.ui.AbstractSettingPopup;
 import com.android.camera.ui.CameraControls;
 import com.android.camera.ui.CameraRootView;
@@ -57,16 +56,17 @@ import com.android.camera.ui.RenderOverlay;
 import com.android.camera.ui.RotateLayout;
 import com.android.camera.ui.RotateTextToast;
 import com.android.camera.ui.ZoomRenderer;
+import com.android.camera.ui.focus.FocusRing;
 import com.android.camera.util.CameraUtil;
 
 public class VideoUI implements PieRenderer.PieListener,
         PreviewGestures.SingleTapListener,
         CameraRootView.MyDisplayListener,
-	FocusUI,
         SurfaceHolder.Callback,
         PauseButton.OnPauseButtonListener {
     private static final String TAG = "CAM_VideoUI";
     // module fields
+    private final FocusRing mFocusRing;
     private CameraActivity mActivity;
     private View mRootView;
     private SurfaceHolder mSurfaceHolder;
@@ -90,7 +90,6 @@ public class VideoUI implements PieRenderer.PieListener,
     private ZoomRenderer mZoomRenderer;
     private PreviewGestures mGestures;
     private View mMenuButton;
-    private OnScreenIndicators mOnScreenIndicators;
     private RotateLayout mRecordingTimeRect;
     private boolean mRecordingStarted = false;
     private VideoController mController;
@@ -132,6 +131,12 @@ public class VideoUI implements PieRenderer.PieListener,
 
     public void showPreviewCover() {
         mPreviewCover.setVisibility(View.VISIBLE);
+    }
+
+    public void hidePreviewCover() {
+        if (mPreviewCover != null && mPreviewCover.getVisibility() != View.GONE) {
+            mPreviewCover.setVisibility(View.GONE);
+        }
     }
 
     private class SettingsPopup extends PopupWindow {
@@ -216,6 +221,7 @@ public class VideoUI implements PieRenderer.PieListener,
             }
         });
 
+        mFocusRing = (FocusRing) mRootView.findViewById(R.id.focus_ring);
         mFlashOverlay = mRootView.findViewById(R.id.flash_overlay);
         mShutterButton = (ShutterButton) mRootView.findViewById(R.id.shutter_button);
         mSwitcher = (ModuleSwitcher) mRootView.findViewById(R.id.camera_switcher);
@@ -238,7 +244,7 @@ public class VideoUI implements PieRenderer.PieListener,
         mPrevOrientationResize = false;
 
         Point size = new Point();
-        mActivity.getWindowManager().getDefaultDisplay().getSize(size);
+        mActivity.getWindowManager().getDefaultDisplay().getRealSize(size);
         mScreenRatio = CameraUtil.determineRatio(size.x, size.y);
         if (mScreenRatio == CameraUtil.RATIO_16_9) {
             int l = size.x > size.y ? size.x : size.y;
@@ -274,9 +280,6 @@ public class VideoUI implements PieRenderer.PieListener,
         });
 
         mCameraControls = (CameraControls) mRootView.findViewById(R.id.camera_controls);
-        mOnScreenIndicators = new OnScreenIndicators(mActivity,
-                mRootView.findViewById(R.id.on_screen_indicators));
-        mOnScreenIndicators.resetToDefault();
         if (mController.isVideoCaptureIntent()) {
             hideSwitcher();
             mActivity.getLayoutInflater().inflate(R.layout.review_module_control,
@@ -592,13 +595,20 @@ public class VideoUI implements PieRenderer.PieListener,
             @Override
             public void onClick(View v) {
                 // Do not allow navigation to filmstrip during video recording
-                if (!mRecordingStarted && !CameraControls.isAnimating()) {
+                if (!mRecordingStarted && !isCameraControlsAnimating()) {
                     mActivity.gotoGallery();
                 }
             }
         });
 
+    }
+
+    public void setPreviewGesturesVideoUI() {
         mActivity.setPreviewGestures(mGestures);
+    }
+
+    public boolean isCameraControlsAnimating() {
+        return mCameraControls.isAnimating();
     }
 
     public void setPrefChangedListener(OnPreferenceChangedListener listener) {
@@ -623,16 +633,6 @@ public class VideoUI implements PieRenderer.PieListener,
     private void initializePauseButton() {
         mPauseButton = (PauseButton) mRootView.findViewById(R.id.video_pause);
         mPauseButton.setOnPauseButtonListener(this);
-    }
-
-    public void updateOnScreenIndicators(Parameters param, ComboPreferences prefs) {
-      mOnScreenIndicators.updateExposureOnScreenIndicator(param,
-              CameraSettings.readExposure(prefs));
-      mOnScreenIndicators.updateFlashOnScreenIndicator(param.getFlashMode());
-      boolean location = RecordLocationPreference.get(
-              prefs, mActivity.getContentResolver());
-      mOnScreenIndicators.updateLocationIndicator(location);
-
     }
 
     public void setAspectRatio(double ratio) {
@@ -882,7 +882,6 @@ public class VideoUI implements PieRenderer.PieListener,
     public void showRecordingUI(boolean recording) {
         mRecordingStarted = recording;
         mMenuButton.setVisibility(recording ? View.GONE : View.VISIBLE);
-        mOnScreenIndicators.setVisibility(recording ? View.GONE : View.VISIBLE);
         if (recording) {
             mShutterButton.setImageResource(R.drawable.shutter_button_video_stop);
             hideSwitcher();
@@ -920,25 +919,15 @@ public class VideoUI implements PieRenderer.PieListener,
         CameraUtil.fadeIn(mReviewPlayButton);
         mReviewImage.setVisibility(View.VISIBLE);
         mMenuButton.setVisibility(View.GONE);
-        mOnScreenIndicators.setVisibility(View.GONE);
     }
 
     public void hideReviewUI() {
         mReviewImage.setVisibility(View.GONE);
         mShutterButton.setEnabled(true);
         mMenuButton.setVisibility(View.VISIBLE);
-        mOnScreenIndicators.setVisibility(View.VISIBLE);
         CameraUtil.fadeOut(mReviewDoneButton);
         CameraUtil.fadeOut(mReviewPlayButton);
         CameraUtil.fadeIn(mShutterButton);
-    }
-
-    private void setShowMenu(boolean show) {
-        if (mController.isVideoCaptureIntent())
-            return;
-        if (mOnScreenIndicators != null) {
-            mOnScreenIndicators.setVisibility(show ? View.VISIBLE : View.GONE);
-        }
     }
 
     public void onPreviewFocusChanged(boolean previewFocused) {
@@ -954,7 +943,6 @@ public class VideoUI implements PieRenderer.PieListener,
             // this can not happen in capture mode
             mRenderOverlay.setVisibility(previewFocused ? View.VISIBLE : View.GONE);
         }
-        setShowMenu(previewFocused);
     }
 
     public void initializePopup(PreferenceGroup pref) {
@@ -1044,9 +1032,7 @@ public class VideoUI implements PieRenderer.PieListener,
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
         Log.v(TAG, "surfaceChanged: width = " + width + ", height = " + height);
         // Make sure preview cover is hidden if preview data is available.
-        if (mPreviewCover.getVisibility() != View.GONE) {
-            mPreviewCover.setVisibility(View.GONE);
-        }
+        hidePreviewCover();
     }
 
     @Override
@@ -1141,47 +1127,7 @@ public class VideoUI implements PieRenderer.PieListener,
         setOrientation(mOrientation, false);
     }
 
-    // implement focusUI interface
-    private FocusIndicator getFocusIndicator() {
-        return mPieRenderer;
-    }
-
-    @Override
-    public boolean hasFaces() {
-        return false;
-    }
-
-    @Override
-    public void clearFocus() {
-        FocusIndicator indicator = getFocusIndicator();
-        if (indicator != null) indicator.clear();
-    }
-
-    @Override
-    public void setFocusPosition(int x, int y) {
-        mPieRenderer.setFocus(x, y);
-    }
-
-    @Override
-    public void onFocusStarted(){
-        getFocusIndicator().showStart();
-    }
-
-    @Override
-    public void onFocusSucceeded(boolean timeOut) {
-        getFocusIndicator().showSuccess(timeOut);
-    }
-
-    @Override
-    public void onFocusFailed(boolean timeOut) {
-        getFocusIndicator().showFail(timeOut);
-    }
-
-    @Override
-    public void pauseFaceDetection() {
-    }
-
-    @Override
-    public void resumeFaceDetection() {
+    public FocusRing getFocusRing() {
+        return mFocusRing;
     }
 }
