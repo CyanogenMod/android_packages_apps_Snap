@@ -2773,7 +2773,12 @@ public class PhotoModule
         String shutterSpeed = mPreferences.getString(
                             CameraSettings.KEY_SHUTTER_SPEED,
                             mActivity.getString(R.string.pref_camera_shutter_speed_default));
-        if (!shutterSpeed.equals("0")) {
+        String aeBracketing = mPreferences.getString(
+                            CameraSettings.KEY_AE_BRACKET_HDR,
+                            mActivity.getString(R.string.pref_camera_ae_bracket_hdr_default));
+        if (!shutterSpeed.equals("0") ||
+            aeBracketing.equals("AE-Bracket") ||
+            CameraUtil.SCENE_MODE_HDR.equals(mSceneMode)) {
             zsl = "off";
         }
         if(zsl.equals("on") && mSnapshotMode != CameraInfo.CAMERA_SUPPORT_MODE_ZSL
@@ -3189,8 +3194,10 @@ public class PhotoModule
                 mCameraDevice.setMetadataCb(mMetaDataCallback);
             }
         }
-        // Disable ZSL for manual shutter speed
-        if (!shutterSpeed.equals("0")) {
+        // Disable ZSL for manual shutter speed and HDR
+        if (!shutterSpeed.equals("0") ||
+            aeBracketing.equals("AE-Bracket") ||
+            CameraUtil.SCENE_MODE_HDR.equals(mSceneMode)) {
             zsl = "off";
         }
         mParameters.setZSLMode(zsl);
@@ -4196,24 +4203,6 @@ public class PhotoModule
     public void onSharedPreferenceChanged(ListPreference pref) {
         // ignore the events after "onPause()"
         if (mPaused) return;
-
-        //filter off unsupported settings
-        final String settingOff = mActivity.getString(R.string.setting_off_value);
-        final String settingOn = mActivity.getString(R.string.setting_on_value);
-        final String zsl = mActivity.getString(R.string.pref_camera_zsl_default);
-        if (!CameraSettings.isZSLHDRSupported(mParameters)) {
-            //HDR internally uses AE-bracketing. Disable both if not supported.
-            if (notSame(pref, CameraSettings.KEY_CAMERA_HDR, settingOff) ||
-                notSame(pref, CameraSettings.KEY_AE_BRACKET_HDR, settingOff)) {
-                mUI.setPreference(CameraSettings.KEY_ZSL,settingOff);
-            } else if (notSame(pref,CameraSettings.KEY_ZSL,settingOff)) {
-                mUI.setPreference(CameraSettings.KEY_CAMERA_HDR, settingOff);
-                mUI.setPreference(CameraSettings.KEY_AE_BRACKET_HDR, settingOff);
-            } else if (notSame(pref, CameraSettings.KEY_CAMERA_HDR, settingOn) ||
-                notSame(pref, CameraSettings.KEY_AE_BRACKET_HDR, settingOn)) {
-                mUI.setPreference(CameraSettings.KEY_ZSL, zsl);
-            }
-        }
 
         if(CameraSettings.KEY_MANUAL_EXPOSURE.equals(pref.getKey())) {
             UpdateManualExposureSettings();
