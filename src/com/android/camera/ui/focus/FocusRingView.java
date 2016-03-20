@@ -131,8 +131,6 @@ public class FocusRingView extends View implements Invalidator, FocusRing {
 
     @Override
     public void setFocusLocation(float viewX, float viewY) {
-        mAutoFocusRing.setCenterX((int) viewX);
-        mAutoFocusRing.setCenterY((int) viewY);
         mManualFocusRing.setCenterX((int) viewX);
         mManualFocusRing.setCenterY((int) viewY);
     }
