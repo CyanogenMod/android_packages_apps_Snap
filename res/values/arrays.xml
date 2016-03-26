@@ -23,11 +23,11 @@
         <item>@string/pref_video_quality_entry_1440p</item>
         <item>@string/pref_video_quality_entry_1080p</item>
         <item>@string/pref_video_quality_entry_720p</item>
-        <item>@string/pref_video_quality_entry_480p</item>
-        <item>@string/pref_video_quality_entry_vga</item>
-        <item>@string/pref_video_quality_entry_cif</item>
-        <item>@string/pref_video_quality_entry_qvga</item>
-        <item>@string/pref_video_quality_entry_qcif</item>
+        <!--item>@string/pref_video_quality_entry_480p</item-->
+        <!--item>@string/pref_video_quality_entry_vga</item-->
+        <!--item>@string/pref_video_quality_entry_cif</item-->
+        <!--item>@string/pref_video_quality_entry_qvga</item-->
+        <!--item>@string/pref_video_quality_entry_qcif</item-->
     </string-array>
 
     <string-array name="pref_video_quality_entryvalues" translatable="false">
@@ -36,11 +36,11 @@
         <item>2560x1440</item>
         <item>1920x1080</item>
         <item>1280x720</item>
-        <item>720x480</item>
-        <item>640x480</item>
-        <item>352x288</item>
-        <item>320x240</item>
-        <item>176x144</item>
+        <!--item>720x480</item-->
+        <!--item>640x480</item-->
+        <!--item>352x288</item-->
+        <!--item>320x240</item-->
+        <!--item>176x144</item-->
     </string-array>
 
     <!-- These values correspond to the time interval between frame capture in millseconds
