@@ -16,6 +16,8 @@
 
 package com.android.camera;
 
+import android.content.Context;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.hardware.Camera.Area;
@@ -24,7 +26,9 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
+import org.codeaurora.snapcam.R;
 
+import com.android.camera.app.CameraApp;
 import com.android.camera.ui.focus.CameraCoordinateTransformer;
 import com.android.camera.ui.focus.FocusRing;
 import com.android.camera.util.CameraUtil;
@@ -99,6 +103,10 @@ public class FocusOverlayManager {
 
     private int mFocusTime; // time after touch-to-focus
 
+    private Point mDispSize;
+    private int mBottomMargin;
+    private int mTopMargin;
+
     public interface Listener {
         public void autoFocus();
         public void cancelAutoFocus();
@@ -127,7 +135,8 @@ public class FocusOverlayManager {
 
     public FocusOverlayManager(ComboPreferences preferences, String[] defaultFocusModes,
             Parameters parameters, Listener listener,
-            boolean mirror, Looper looper, FocusRing focusRing) {
+            boolean mirror, Looper looper, FocusRing focusRing,
+            CameraActivity activity) {
         mHandler = new MainHandler(looper);
         mPreferences = preferences;
         mDefaultFocusModes = defaultFocusModes;
@@ -135,6 +144,13 @@ public class FocusOverlayManager {
         mListener = listener;
         setMirror(mirror);
         mFocusRing = focusRing;
+        mDispSize = new Point();
+        activity.getWindowManager().getDefaultDisplay().getRealSize(mDispSize);
+        Context context = CameraApp.getContext();
+        mBottomMargin =
+            context.getResources().getDimensionPixelSize(R.dimen.preview_bottom_margin);
+        mTopMargin =
+            context.getResources().getDimensionPixelSize(R.dimen.preview_top_margin);
     }
 
     public void setFocusRing(FocusRing focusRing) {
@@ -372,7 +388,10 @@ public class FocusOverlayManager {
                     mState == STATE_SUCCESS || mState == STATE_FAIL)) {
             cancelAutoFocus();
         }
-        if (mPreviewRect.isEmpty() || !mPreviewRect.contains(x, y)) return;
+        if (mPreviewRect.isEmpty() || !mPreviewRect.contains(x, y) ||
+            (y > (mDispSize.y - mBottomMargin) || y < mTopMargin)) {
+            return;
+        }
         // Initialize variables.
         // Initialize mFocusArea.
         if (mFocusAreaSupported) {
