@@ -498,7 +498,7 @@ class AndroidCameraManagerImpl implements CameraManager {
         @Override
         public void stopPreview() {
             mCameraHandler.sendEmptyMessage(STOP_PREVIEW);
-            //mCameraHandler.waitDone();
+            mCameraHandler.waitDone();
         }
 
         @Override
