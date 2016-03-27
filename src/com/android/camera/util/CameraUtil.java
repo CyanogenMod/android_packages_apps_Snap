@@ -646,27 +646,6 @@ public class CameraUtil {
         return optimalSize;
     }
 
-    public static void dumpParameters(Parameters params) {
-        Set<String> sortedParams = new TreeSet<String>();
-        sortedParams.addAll(Arrays.asList(params.flatten().split(";")));
-        StringBuilder sb = new StringBuilder();
-        sb.append("[");
-        Iterator<String> i = sortedParams.iterator();
-        while (i.hasNext()) {
-            String nextParam = i.next();
-            if ((sb.length() + nextParam.length()) > 2044) {
-                Log.d(TAG, "Parameters: " + sb.toString());
-                sb = new StringBuilder();
-            }
-            sb.append(nextParam);
-            if (i.hasNext()) {
-                sb.append(", ");
-            }
-        }
-        sb.append("]");
-        Log.d(TAG, "Parameters: " + sb.toString());
-    }
-
     /**
      * Returns whether the device is voice-capable (meaning, it can do MMS).
      */

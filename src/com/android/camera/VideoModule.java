@@ -2611,8 +2611,6 @@ public class VideoModule implements CameraModule,
                 CameraProfile.QUALITY_HIGH);
         mParameters.setJpegQuality(jpegQuality);
 
-        CameraUtil.dumpParameters(mParameters);
-
         //Call Qcom related Camera Parameters
         qcomSetCameraParameters();
 
