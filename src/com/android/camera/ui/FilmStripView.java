@@ -579,6 +579,8 @@ public class FilmStripView extends ViewGroup implements BottomControlsListener {
          * @param scale The current scale of the filmstrip.
          */
         public void layoutIn(Rect drawArea, int refCenter, float scale) {
+            if (mView == null) return;
+
             final float translationX = (mTranslationXAnimator.isRunning() ?
                     (Float) mTranslationXAnimator.getAnimatedValue() : 0f);
             int left = (int) (drawArea.centerX() + (mLeftPosition - refCenter + translationX) * scale);
