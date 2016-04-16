@@ -99,6 +99,7 @@ import com.android.camera.data.MediaDetails;
 import com.android.camera.data.SimpleViewData;
 import com.android.camera.exif.ExifInterface;
 import com.android.camera.tinyplanet.TinyPlanetFragment;
+import com.android.camera.ui.CameraRootView;
 import com.android.camera.ui.ModuleSwitcher;
 import com.android.camera.ui.DetailsDialog;
 import com.android.camera.ui.FilmStripView;
@@ -188,7 +189,7 @@ public class CameraActivity extends Activity
     private int mCurrentModuleIndex;
     private CameraModule mCurrentModule;
     private FrameLayout mAboveFilmstripControlLayout;
-    private View mCameraModuleRootView;
+    private CameraRootView mCameraModuleRootView;
     private FilmStripView mFilmStripView;
     private ProgressBar mBottomProgress;
     private View mPanoStitchingPanel;
@@ -636,7 +637,6 @@ public class CameraActivity extends Activity
                 | (visible ? View.SYSTEM_UI_FLAG_VISIBLE :
                     View.SYSTEM_UI_FLAG_LOW_PROFILE
                         | View.SYSTEM_UI_FLAG_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                         | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
         if (newSystemUIVisibility != currentSystemUIVisibility) {
             decorView.setSystemUiVisibility(newSystemUIVisibility);
@@ -1418,7 +1418,7 @@ public class CameraActivity extends Activity
 
         LayoutInflater inflater = getLayoutInflater();
         View rootLayout = inflater.inflate(R.layout.camera, null, false);
-        mCameraModuleRootView = rootLayout.findViewById(R.id.camera_app_root);
+        mCameraModuleRootView = (CameraRootView) rootLayout.findViewById(R.id.camera_app_root);
 
         int moduleIndex = -1;
         if (MediaStore.INTENT_ACTION_VIDEO_CAMERA.equals(getIntent().getAction())
@@ -1903,6 +1903,10 @@ public class CameraActivity extends Activity
 
     private void openModule(CameraModule module) {
         module.init(this, mCameraModuleRootView);
+        // Re-apply the last fitSystemWindows() run. Our views rely on this, but
+        // the framework's ActionBarOverlayLayout effectively prevents this if the
+        // actual insets haven't changed.
+        mCameraModuleRootView.redoFitSystemWindows();
         module.onResumeBeforeSuper();
         module.onResumeAfterSuper();
     }
