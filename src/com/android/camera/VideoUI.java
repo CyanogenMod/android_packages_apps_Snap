@@ -24,6 +24,8 @@ import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Point;
+import android.graphics.drawable.Animatable;
+import android.graphics.drawable.AnimatedVectorDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.hardware.Camera.Parameters;
 import android.util.Log;
@@ -601,7 +603,6 @@ public class VideoUI implements PieRenderer.PieListener,
                 }
             }
         });
-
     }
 
     public void setPreviewGesturesVideoUI() {
@@ -618,17 +619,26 @@ public class VideoUI implements PieRenderer.PieListener,
 
     private void initializeMiscControls() {
         mReviewImage = (ImageView) mRootView.findViewById(R.id.review_image);
-        mShutterButton.setImageResource(R.drawable.btn_new_shutter_video);
-        mShutterButton.setOnShutterButtonListener(mController);
-        mShutterButton.setVisibility(View.VISIBLE);
-        mShutterButton.requestFocus();
-        mShutterButton.enableTouch(true);
         mRecordingTimeView = (TextView) mRootView.findViewById(R.id.recording_time);
         mRecordingTimeRect = (RotateLayout) mRootView.findViewById(R.id.recording_time_rect);
         mTimeLapseLabel = mRootView.findViewById(R.id.time_lapse_label);
         // The R.id.labels can only be found in phone layout.
         // That is, mLabelsLinearLayout should be null in tablet layout.
         mLabelsLinearLayout = (LinearLayout) mRootView.findViewById(R.id.labels);
+
+        mShutterButton.setImageResource(R.drawable.shutter_vector_video_anim);
+        mShutterButton.setOnShutterButtonListener(mController);
+        mShutterButton.setVisibility(View.VISIBLE);
+        mShutterButton.requestFocus();
+        mShutterButton.enableTouch(true);
+    }
+
+    public void doShutterAnimation() {
+        mShutterButton.setImageResource(R.drawable.shutter_vector_video_anim);
+        AnimatedVectorDrawable shutterVector = (AnimatedVectorDrawable) mShutterButton.getDrawable();
+        if (shutterVector != null && shutterVector instanceof Animatable) {
+            ((AnimatedVectorDrawable) shutterVector).start();
+        }
     }
 
     private void initializePauseButton() {
@@ -878,12 +888,12 @@ public class VideoUI implements PieRenderer.PieListener,
         mRecordingStarted = recording;
         mMenuButton.setVisibility(recording ? View.GONE : View.VISIBLE);
         if (recording) {
-            mShutterButton.setImageResource(R.drawable.shutter_button_video_stop);
+            mShutterButton.setImageResource(R.drawable.shutter_vector_video_anim);
             hideSwitcher();
             mRecordingTimeView.setText("");
             ((ViewGroup)mRootView).addView(mRecordingTimeRect);
         } else {
-            mShutterButton.setImageResource(R.drawable.btn_new_shutter_video);
+            mShutterButton.setImageResource(R.drawable.shutter_vector_video);
             if (!mController.isVideoCaptureIntent()) {
                 showSwitcher();
             }
@@ -907,7 +917,7 @@ public class VideoUI implements PieRenderer.PieListener,
     }
 
     public void showReviewControls() {
-        CameraUtil.fadeOut(mShutterButton);
+        //CameraUtil.fadeOut(mShutterButton);
         CameraUtil.fadeIn(mReviewDoneButton);
         CameraUtil.fadeIn(mReviewPlayButton);
         mReviewImage.setVisibility(View.VISIBLE);

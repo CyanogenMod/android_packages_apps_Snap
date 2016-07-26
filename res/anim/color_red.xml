@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android">
+    <objectAnimator
+        android:duration="@integer/shutter_animation_duration"
+        android:propertyName="fillColor"
+        android:repeatMode="reverse"
+        android:repeatCount="1"
+        android:valueFrom="@color/material_accent_icon"
+        android:valueTo="@color/red"
+        />
+</set>

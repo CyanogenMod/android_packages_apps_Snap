@@ -1,21 +1,40 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Copyright (C) 2013 The Android Open Source Project
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="24dp"
+    android:width="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
 
-     Licensed under the Apache License, Version 2.0 (the "License");
-     you may not use this file except in compliance with the License.
-     You may obtain a copy of the License at
-
-          http://www.apache.org/licenses/LICENSE-2.0
-
-     Unless required by applicable law or agreed to in writing, software
-     distributed under the License is distributed on an "AS IS" BASIS,
-     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-     See the License for the specific language governing permissions and
-     limitations under the License.
--->
-
-<selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_pressed="true" android:drawable="@drawable/btn_shutter_pressed_disabled" />
-    <item android:drawable="@drawable/btn_shutter_default_disabled" />
-</selector>
-
+    <group
+        android:name="shutterGroup"
+        android:pivotX="12"
+        android:pivotY="12"
+        android:rotation="0" >
+        <path
+            android:name="shutter"
+            android:fillColor="@color/material_accent_icon_disabled"
+            android:pathData="M 8.88,10.2 C 10.788,6.896 12.696,3.592 14.604,0.288 11.075434,-0.51550027
+7.2024559,0.38140783 4.416,2.7 5.88,5.24 7.344,7.78 8.808,10.32 8.832,10.28
+8.856,10.24 8.88,10.2 Z M 23.448,8.4 C 22.382465,4.9407558 19.647356,2.0598135
+16.26,0.792 14.792,3.328 13.324,5.864 11.856,8.4 M 23.76,9.6 c -2.996,0 -5.992,0
+-8.988,0 2.022674,3.498456 4.039585,7.00024 6.06,10.5 2.588494,-2.765424
+3.710581,-6.79349 2.928,-10.5 z M 7.848,12 C 6.288,9.3 4.728,6.6 3.168,3.9
+0.5581657,6.6503106 -0.53155196,10.699956 0.24,14.4 c 2.996,0 5.992,0 8.988,0 m
+-8.676,1.2 c 1.0704527,3.45616 3.8016669,6.338544 7.188,7.608 1.468,-2.536
+2.936,-5.072 4.404,-7.608 m 1.932,0 c -1.56,2.704 -3.12,5.408 -4.68,8.112
+3.481249,0.801011 7.2964,-0.08567 10.078935,-2.318727 C 19.57324,20.97084
+19.09831,20.598527 18.949747,20.199588 17.697165,18.026392 16.444582,15.853196
+15.192,13.68 M 12,11.518717 c 0.821115,-0.02412 0.923314,1.316989
+0.116431,1.433346 C 11.316366,13.11879 10.998598,11.835367 11.751775,11.56778
+11.830285,11.53554 11.915129,11.51867 12,11.51872 Z m 0,-0.481283 c
+-1.129581,-0.03401 -1.560784,1.6437 -0.61687,2.215673 0.865702,0.642735
+2.072171,-0.402825 1.707588,-1.368037 C 12.958919,11.406623 12.503502,11.030605
+12,11.037434 Z m -1.826738,-0.721925 c 0.42944,0.04669 0.830437,0.02719
+1.058859,-0.3939696 0.339925,-0.1975919 0.835197,-0.033624 1.23695,-0.087315
+0.442079,-0.083297 0.523736,0.6722636 1.012081,0.4812846 0.402286,-0.104008
+0.900345,0.143445 0.80227,0.617059 -0.02493,0.97811 0.04933,1.968839
+-0.03605,2.939346 -0.253103,0.509914 -0.925625,0.216183 -1.371068,0.293862
+-0.958387,-0.02599 -1.931336,0.05158 -2.8808833,-0.03799 -0.499104,-0.300457
+-0.1953847,-0.988347 -0.2788431,-1.461613 0.037964,-0.696712 -0.075697,-1.418344
+0.055906,-2.100119 0.074811,-0.148371 0.2331644,-0.252174 0.4007784,-0.250543 z" />
+    </group>
+</vector>

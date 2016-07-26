@@ -1,0 +1,12 @@
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+   android:drawable="@drawable/shutter_vector_video" >
+     <target
+         android:name="shutterGroup"
+         android:animation="@anim/rotation_video" />
+     <target
+         android:name="shutter"
+         android:animation="@anim/color_red_video" />
+     <target
+         android:name="videorec"
+         android:animation="@anim/color_red_rec" />
+</animated-vector>

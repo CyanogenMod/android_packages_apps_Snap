@@ -81,4 +81,6 @@
     <color name="histogram_grid_lines">#c0bdbdbd</color>
     <color name="histogram_bars">#e0ffffff</color>
     <color name="toast_text">@color/white</color>
+    <color name="material_accent_icon">#ffffffff</color> <!-- all icons + scene mode selected -->
+    <color name="material_accent_icon_disabled">#44ffffff</color> <!-- disabled icon -->
 </resources>

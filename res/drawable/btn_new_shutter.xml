@@ -14,8 +14,7 @@
      limitations under the License.
 -->
 
-<selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_pressed="true"
-          android:drawable="@drawable/shutter_button_pressed" />
-    <item android:drawable="@drawable/shutter_button_normal" />
-</selector>
+<animated-selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true" android:drawable="@drawable/shutter_button_anim" />
+    <item android:drawable="@drawable/shutter_vector_camera" />
+</animated-selector>
