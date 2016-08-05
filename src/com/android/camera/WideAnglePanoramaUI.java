@@ -125,7 +125,7 @@ public class WideAnglePanoramaUI implements
         mThumbnail.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!mCameraControls.isAnimating())
+                if (!CameraControls.isAnimating())
                     mActivity.gotoGallery();
             }
         });

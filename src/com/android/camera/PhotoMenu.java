@@ -43,6 +43,7 @@ import android.widget.FrameLayout;
 import android.widget.FrameLayout.LayoutParams;
 
 import com.android.camera.CameraPreference.OnPreferenceChangedListener;
+import com.android.camera.ui.CameraControls;
 import com.android.camera.ui.CameraRootView;
 import com.android.camera.ui.CountdownTimerPopup;
 import com.android.camera.ui.ListSubMenu;
@@ -962,7 +963,7 @@ public class PhotoMenu extends MenuController
     }
 
     public void openFirstLevel() {
-        if (isMenuBeingShown() || mUI.isCameraControlsAnimating())
+        if (isMenuBeingShown() || CameraControls.isAnimating())
             return;
         if (mListMenu == null || mPopupStatus != POPUP_FIRST_LEVEL) {
             initializePopup();

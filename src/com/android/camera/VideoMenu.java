@@ -37,6 +37,7 @@ import android.widget.LinearLayout;
 import android.widget.FrameLayout;
 import android.widget.FrameLayout.LayoutParams;
 
+import com.android.camera.ui.CameraControls;
 import com.android.camera.ui.CameraRootView;
 import com.android.camera.ui.ListSubMenu;
 import com.android.camera.ui.ListMenu;
@@ -574,7 +575,7 @@ public class VideoMenu extends MenuController
     }
 
     public void openFirstLevel() {
-        if (isMenuBeingShown() || mUI.isCameraControlsAnimating())
+        if (isMenuBeingShown() || CameraControls.isAnimating())
             return;
         if (mListMenu == null || mPopupStatus != POPUP_FIRST_LEVEL) {
             initializePopup();
